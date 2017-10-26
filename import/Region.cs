@@ -72,7 +72,7 @@ namespace import
 
 					int chunkX = nbtLevel.Get("xPos");
 					int chunkY = nbtLevel.Get("zPos");
-					Chunk chunk = new Chunk(chunkX, chunkY);
+					Chunk chunk = new Chunk(chunkX , chunkY);
 
 					bool legacy = true;
 

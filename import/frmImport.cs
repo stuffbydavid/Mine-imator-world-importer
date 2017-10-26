@@ -14,8 +14,10 @@ namespace import
 
 	public partial class frmImport : Form
 	{
+		/// <summary>A type of Minecraft block</summary>
 		public class Block
 		{
+			/// <summary>Determines how a block is previewed in the top-down or cross-section view</summary>
 			public class Preview
 			{
 				public Color XYColor, XZColor;
@@ -27,8 +29,10 @@ namespace import
 				}
 			}
 
+			/// <summary>A specific block state</summary>
 			public class State
 			{
+				/// <summary>A possible value of the block state</summary>
 				public class Value
 				{
 					public string name;
@@ -80,12 +84,13 @@ namespace import
 
 		// Program
 		string savefile = "";
+		World world = new World();
+
 		Point moveStartMPos, moveStartPos, XYImageMidPos, XZImageMidPos;
 		float XYImageZoom = 8, XZImageZoom = 4;
 		byte XYDragView = 0, XYDragSelect = 0;
 		byte XZDragView = 0, XZDragSelect = 0;
 
-		World world = new World();
 		Image spawnImage = import.Properties.Resources.spawn;
 		Image playerImage = import.Properties.Resources.player;
 		Point3D<int> selectStart, selectEnd;
@@ -346,13 +351,10 @@ namespace import
 			schematic.Add(TagType.BYTE_ARRAY, "Blocks", blockLegacyIdArray);
 			schematic.Add(TagType.BYTE_ARRAY, "Data", blockLegacyDataArray);
 
-			NBTCompound root = new NBTCompound();
-			root.Add(TagType.COMPOUND, "Schematic", schematic);
-
 			NBTWriter nbt = new NBTWriter();
 			try
 			{
-				nbt.Save(filename, root);
+				nbt.Save(filename, "Schematic", schematic);
 			}
 			catch (Exception e)
 			{
@@ -560,7 +562,7 @@ namespace import
 		{
 			if (chunk.hasXYImage)
 				return chunk.XYImage.Image;
-
+			
 			chunk.XYImage = new FastBitmap(16, 16);
 			chunk.XYImage.LockImage();
 
@@ -569,7 +571,6 @@ namespace import
 				for (int y = 0; y < 16; y++)
 				{
 					Color finalColor = Color.Transparent;
-
 					for (int z = 255; z >= 0; z--)
 					{
 						Chunk.Section section = chunk.sections[z / 16];
@@ -758,10 +759,10 @@ namespace import
 			int screenwid = pboxWorldXY.Width, screenhei = pboxWorldXY.Height;
 			XYBlocksWidth = (int)(screenwid / XYImageZoom) + 1;
 			XYBlocksHeight = (int)(screenhei / XYImageZoom) + 1;
-			XYStart = new Point((int)Math.Floor(XYImageMidPos.X - (screenwid / XYImageZoom) / 2), (int)Math.Floor(XYImageMidPos.Y - (screenhei / XYImageZoom) / 2));
+			XYStart = new Point((int)(XYImageMidPos.X - (screenwid / XYImageZoom) / 2), (int)(XYImageMidPos.Y - (screenhei / XYImageZoom) / 2));
 			Bitmap bmp = new Bitmap(XYBlocksWidth, XYBlocksHeight);
 
-			//Find chunks and draw them
+			// Find chunks and draw them
 			using (Graphics g = Graphics.FromImage(bmp))
 			{
 				if (!move)
@@ -828,6 +829,7 @@ namespace import
 					}
 				}
 			}
+
 			XYMapBitmap.Dispose();
 			XYMapBitmap = bmp;
 			UpdateXYSel();

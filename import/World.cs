@@ -112,8 +112,8 @@ namespace import
 		/// <param name="y">y value to check.</param>
 		public Region GetRegion(int x, int y)
 		{
-			int cx = x / 512;
-			int cy = y / 512;
+			int cx = Util.IntDiv(x, 512);
+			int cy = Util.IntDiv(y, 512);
 
 			Region reg = null;
 			for (int i = 0; i < regions.Count; i++)
@@ -138,7 +138,7 @@ namespace import
 			if (reg == null)
 				return null;
 
-			return reg.chunks[Util.ModNeg(x, 512) / 16, Util.ModNeg(y, 512) / 16];
+			return reg.chunks[Util.ModNeg(Util.IntDiv(x, 16), 32), Util.ModNeg(Util.IntDiv(y, 16), 32)];
 		}
 
 		/// <summary>Returns the block ID and data found at x, y, z in the world.</summary>

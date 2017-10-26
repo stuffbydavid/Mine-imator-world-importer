@@ -40,6 +40,11 @@ namespace import
 				return x % y;
 		}
 
+		static public int IntDiv(int a, int b)
+		{
+			return (int)Math.Floor(((decimal)a) / ((decimal)b));
+		}
+
 		static public Color ColorAdd(Color a, Color b)
 		{
 			float bA = ((float)b.A) / 255.0f;

@@ -97,12 +97,12 @@ namespace import
 
 		/// <summary>Writes a compound tag to the given NBT file</summary>
 		/// <param name="filename">Path to write to.</param>
-		public void Save(string filename, NBTCompound root)
+		public void Save(string filename, string rootName, NBTCompound root)
 		{
 			outFilename = filename;
 			outStream = File.Create("temp.nbt");
 			WriteByte((byte)TagType.COMPOUND);
-			WriteString("");
+			WriteString(rootName);
 			WriteTAGCompound(root);
 			outStream.Close();
 			GZIPCompressFile("temp.nbt", outFilename);
