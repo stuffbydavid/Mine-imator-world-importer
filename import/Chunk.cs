@@ -6,18 +6,21 @@ using System.Drawing;
 
 namespace import
 {
-	/// <summary>Represents a 16x16x256 collection of blocks and their additional data.</summary>
+	/// <summary>Represents a grid of 16x16x256 blocks.</summary>
 	public class Chunk
 	{
+		/// <summary>A section </summary>
 		public class Section
 		{
-			public World.Block[,,] blocks = new World.Block[16, 16, 16];
+			public byte[,,] blockLegacyIds = new byte[16, 16, 16];
+			public byte[,,] blockLegacyDatas = new byte[16, 16, 16];
 		}
 
 		public int X, Y;
 		public FastBitmap XYImage, XZImage;
-		public bool hasXYImage, hasXZImage;
 		public Section[] sections = new Section[16];
+		public NBTList tileEntities;
+		public bool tileEntitiesAdded = false;
 
 		/// <summary>Initializes a new chunk at the given position and with the given amount of sections (slices with 16x16x16 blocks).</summary>
 		/// <param name="x">x value to add the chunk.</param>
@@ -26,8 +29,8 @@ namespace import
 		{
 			X = x; Y = y;
 
-			hasXYImage = false;
-			hasXZImage = false;
+			XYImage = null;
+			XZImage = null;
 
 			for (int s = 0; s < 16; s++)
 				sections[s] = null;

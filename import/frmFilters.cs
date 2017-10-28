@@ -25,33 +25,48 @@ namespace import
 			}
 		}
 
-		frmImport main;
+		frmImport import;
 
 		public frmFilters(Form callingForm)
 		{
-			main = callingForm as frmImport;
+			import = callingForm as frmImport;
+
 			InitializeComponent();
+
+			// Set texts
+			Text = import.GetText("filterstitle");
+			cbxActivate.Text = import.GetText("filtersactivate");
+			lblBlocksRemove.Text = import.GetText("filtersblocksremove");
+			rbtnRemove.Text = import.GetText("filtersremove");
+			rbtnKeep.Text = import.GetText("filterskeep");
+			btnAdd.Text = import.GetText("filtersadd");
+			btnRemove.Text = import.GetText("filtersremove");
+			btnOk.Text = import.GetText("filtersok");
+
+			LoadFilters();
 		}
 
-		private void frmFilters_Load(object sender, EventArgs e)
+		private void LoadFilters()
 		{
-			/*// Load block variants and store in combobox and listbox
-			foreach (KeyValuePair<IdDataPair, Block> pair in main.blockMap)
+			// Load block variants and store in combobox and listbox
+			foreach (KeyValuePair<string, frmImport.Block> pair in import.blockNameMap)
 			{ 
-				Block block = pair.Value;
-				BlockOption option = new BlockOption(block.name, block.displayName);
+				BlockOption option = new BlockOption(pair.Key, pair.Value.displayName);
 				cbxBlocks.Items.Add(option);
-				if (main.filterBlocks.Contains(block.name))
+				if (import.filterBlocks.Contains(pair.Key))
 					lbxFilters.Items.Add(option);
 			}
 
-			panFilters.Enabled = cbxActivate.Checked;*/
+			// Settings
+			cbxActivate.Checked = import.filterBlocksActive;
+			rbtnRemove.Checked = !import.filterBlocksInvert;
+			rbtnKeep.Checked = import.filterBlocksInvert;
+			panFilters.Enabled = cbxActivate.Checked;
 		}
 
 		private void cbxActivate_CheckedChanged(object sender, EventArgs e)
 		{
 			panFilters.Enabled = cbxActivate.Checked;
-			main.filterBlocksActive = cbxActivate.Checked;
 		}
 
 		private void btnAdd_Click(object sender, EventArgs e)
@@ -60,26 +75,26 @@ namespace import
 				return;
 
 			// Already added in list
-			BlockOption option = (BlockOption)cbxBlocks.SelectedValue;
-			if (main.filterBlocks.Contains(option.name))
+			BlockOption option = (BlockOption)cbxBlocks.SelectedItem;
+			if (import.filterBlocks.Contains(option.name))
 				return;
 
-			main.filterBlocks.Add(option.name);
-			lbxFilters.Items.Add(option.displayName);
+			import.filterBlocks.Add(option.name);
+			lbxFilters.Items.Add(option);
 		}
-
 
 		private void btnRemove_Click(object sender, EventArgs e)
 		{
-			BlockOption option = (BlockOption)lbxFilters.SelectedValue;
-			main.filterBlocks.Remove(option.name);
+			BlockOption option = (BlockOption)lbxFilters.SelectedItem;
+			import.filterBlocks.Remove(option.name);
 			lbxFilters.Items.Remove(option);
+			btnRemove.Enabled = false;
 		}
 
 
 		private void btnOk_Click(object sender, EventArgs e)
 		{
-			this.Close();
+			Close();
 		}
 
 		private void frmFilters_FormClosing(object sender, FormClosingEventArgs e)
@@ -87,10 +102,33 @@ namespace import
 			// Save filtered blocks to JSON
 			Dictionary<string, dynamic> root = new Dictionary<string, dynamic>();
 			root["active"] = cbxActivate.Checked;
-			root["invert"] = main.filterBlocksInvert;
-			root["blocks"] = main.filterBlocks;
-			File.WriteAllText("blocks.mifilter", JsonConvert.SerializeObject(root, Formatting.Indented).Replace("  ", "\t"));
-			main.UpdateFilterBlocks();
+			root["invert"] = rbtnKeep.Checked;
+			root["blocks"] = import.filterBlocks;
+			File.WriteAllText(frmImport.miBlockFilterFile, JsonConvert.SerializeObject(root, Formatting.Indented).Replace("  ", "\t"));
+
+			import.filterBlocksActive = cbxActivate.Checked;
+			import.filterBlocksInvert = rbtnKeep.Checked;
+			import.UpdateFilterBlocks();
+		}
+
+		private void rbtnKeep_CheckedChanged(object sender, EventArgs e)
+		{
+			lblBlocksRemove.Text = import.GetText("filtersblockskeep");
+		}
+
+		private void rbtnRemove_CheckedChanged(object sender, EventArgs e)
+		{
+			lblBlocksRemove.Text = import.GetText("filtersblocksremove");
+		}
+
+		private void cbxBlocks_SelectedIndexChanged(object sender, EventArgs e)
+		{
+			btnAdd.Enabled = (cbxBlocks.SelectedItem != null);
+		}
+
+		private void lbxFilters_SelectedIndexChanged(object sender, EventArgs e)
+		{
+			btnRemove.Enabled = (lbxFilters.SelectedItem != null);
 		}
 	}
 }

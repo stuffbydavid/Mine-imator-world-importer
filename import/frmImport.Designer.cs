@@ -29,15 +29,15 @@
 		private void InitializeComponent()
 		{
 			System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(frmImport));
-			this.label1 = new System.Windows.Forms.Label();
+			this.lblWorld = new System.Windows.Forms.Label();
 			this.cbxSaves = new System.Windows.Forms.ComboBox();
 			this.btnDone = new System.Windows.Forms.Button();
 			this.splitContainer1 = new System.Windows.Forms.SplitContainer();
-			this.label3 = new System.Windows.Forms.Label();
+			this.lblTopDownView = new System.Windows.Forms.Label();
 			this.panXY = new System.Windows.Forms.Panel();
 			this.pboxWorldXY = new System.Windows.Forms.PictureBox();
 			this.lblFilterInfo = new System.Windows.Forms.Label();
-			this.label4 = new System.Windows.Forms.Label();
+			this.lblCrossSectionView = new System.Windows.Forms.Label();
 			this.btnFilters = new System.Windows.Forms.Button();
 			this.btnCancel = new System.Windows.Forms.Button();
 			this.lblSelSize = new System.Windows.Forms.Label();
@@ -46,7 +46,7 @@
 			this.rbtOver = new System.Windows.Forms.RadioButton();
 			this.panYZ = new System.Windows.Forms.Panel();
 			this.pboxWorldXZ = new System.Windows.Forms.PictureBox();
-			this.label2 = new System.Windows.Forms.Label();
+			this.lblInfo = new System.Windows.Forms.Label();
 			((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
 			this.splitContainer1.Panel1.SuspendLayout();
 			this.splitContainer1.Panel2.SuspendLayout();
@@ -57,18 +57,18 @@
 			((System.ComponentModel.ISupportInitialize)(this.pboxWorldXZ)).BeginInit();
 			this.SuspendLayout();
 			// 
-			// label1
+			// lblWorld
 			// 
-			this.label1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+			this.lblWorld.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.label1.AutoSize = true;
-			this.label1.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.label1.Location = new System.Drawing.Point(4, 6);
-			this.label1.Name = "label1";
-			this.label1.Size = new System.Drawing.Size(39, 13);
-			this.label1.TabIndex = 1;
-			this.label1.Text = "World:";
+			this.lblWorld.AutoSize = true;
+			this.lblWorld.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+			this.lblWorld.Location = new System.Drawing.Point(4, 6);
+			this.lblWorld.Name = "lblWorld";
+			this.lblWorld.Size = new System.Drawing.Size(33, 13);
+			this.lblWorld.TabIndex = 1;
+			this.lblWorld.Text = "world";
 			// 
 			// cbxSaves
 			// 
@@ -94,7 +94,7 @@
 			this.btnDone.Name = "btnDone";
 			this.btnDone.Size = new System.Drawing.Size(179, 65);
 			this.btnDone.TabIndex = 3;
-			this.btnDone.Text = "Done";
+			this.btnDone.Text = "done";
 			this.btnDone.UseVisualStyleBackColor = true;
 			this.btnDone.Click += new System.EventHandler(this.btnDone_Click);
 			// 
@@ -108,13 +108,13 @@
 			// 
 			// splitContainer1.Panel1
 			// 
-			this.splitContainer1.Panel1.Controls.Add(this.label3);
+			this.splitContainer1.Panel1.Controls.Add(this.lblTopDownView);
 			this.splitContainer1.Panel1.Controls.Add(this.panXY);
 			// 
 			// splitContainer1.Panel2
 			// 
 			this.splitContainer1.Panel2.Controls.Add(this.lblFilterInfo);
-			this.splitContainer1.Panel2.Controls.Add(this.label4);
+			this.splitContainer1.Panel2.Controls.Add(this.lblCrossSectionView);
 			this.splitContainer1.Panel2.Controls.Add(this.btnFilters);
 			this.splitContainer1.Panel2.Controls.Add(this.btnCancel);
 			this.splitContainer1.Panel2.Controls.Add(this.lblSelSize);
@@ -122,21 +122,21 @@
 			this.splitContainer1.Panel2.Controls.Add(this.rbtNether);
 			this.splitContainer1.Panel2.Controls.Add(this.rbtOver);
 			this.splitContainer1.Panel2.Controls.Add(this.btnDone);
-			this.splitContainer1.Panel2.Controls.Add(this.label1);
+			this.splitContainer1.Panel2.Controls.Add(this.lblWorld);
 			this.splitContainer1.Panel2.Controls.Add(this.panYZ);
 			this.splitContainer1.Panel2.Controls.Add(this.cbxSaves);
 			this.splitContainer1.Size = new System.Drawing.Size(1001, 559);
 			this.splitContainer1.SplitterDistance = 635;
 			this.splitContainer1.TabIndex = 6;
 			// 
-			// label3
+			// lblTopDownView
 			// 
-			this.label3.AutoSize = true;
-			this.label3.Location = new System.Drawing.Point(1, 1);
-			this.label3.Name = "label3";
-			this.label3.Size = new System.Drawing.Size(83, 13);
-			this.label3.TabIndex = 1;
-			this.label3.Text = "Top down view:";
+			this.lblTopDownView.AutoSize = true;
+			this.lblTopDownView.Location = new System.Drawing.Point(1, 1);
+			this.lblTopDownView.Name = "lblTopDownView";
+			this.lblTopDownView.Size = new System.Drawing.Size(70, 13);
+			this.lblTopDownView.TabIndex = 1;
+			this.lblTopDownView.Text = "topdownview";
 			// 
 			// panXY
 			// 
@@ -175,18 +175,18 @@
 			this.lblFilterInfo.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
 			this.lblFilterInfo.Location = new System.Drawing.Point(183, 513);
 			this.lblFilterInfo.Name = "lblFilterInfo";
-			this.lblFilterInfo.Size = new System.Drawing.Size(166, 13);
+			this.lblFilterInfo.Size = new System.Drawing.Size(63, 13);
 			this.lblFilterInfo.TabIndex = 12;
-			this.lblFilterInfo.Text = "Some blocks will be filtered!";
+			this.lblFilterInfo.Text = "filtersalert";
 			// 
-			// label4
+			// lblCrossSectionView
 			// 
-			this.label4.AutoSize = true;
-			this.label4.Location = new System.Drawing.Point(-1, 50);
-			this.label4.Name = "label4";
-			this.label4.Size = new System.Drawing.Size(98, 13);
-			this.label4.TabIndex = 11;
-			this.label4.Text = "Cross section view:";
+			this.lblCrossSectionView.AutoSize = true;
+			this.lblCrossSectionView.Location = new System.Drawing.Point(-1, 50);
+			this.lblCrossSectionView.Name = "lblCrossSectionView";
+			this.lblCrossSectionView.Size = new System.Drawing.Size(88, 13);
+			this.lblCrossSectionView.TabIndex = 11;
+			this.lblCrossSectionView.Text = "crosssectionview";
 			// 
 			// btnFilters
 			// 
@@ -195,7 +195,7 @@
 			this.btnFilters.Name = "btnFilters";
 			this.btnFilters.Size = new System.Drawing.Size(84, 23);
 			this.btnFilters.TabIndex = 10;
-			this.btnFilters.Text = "Filters";
+			this.btnFilters.Text = "filters";
 			this.btnFilters.UseVisualStyleBackColor = true;
 			this.btnFilters.Click += new System.EventHandler(this.btnAdvanced_Click);
 			// 
@@ -207,7 +207,7 @@
 			this.btnCancel.Name = "btnCancel";
 			this.btnCancel.Size = new System.Drawing.Size(81, 24);
 			this.btnCancel.TabIndex = 9;
-			this.btnCancel.Text = "Cancel";
+			this.btnCancel.Text = "cancel";
 			this.btnCancel.UseVisualStyleBackColor = true;
 			this.btnCancel.Click += new System.EventHandler(this.btnCancel_Click);
 			// 
@@ -218,9 +218,9 @@
 			this.lblSelSize.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
 			this.lblSelSize.Location = new System.Drawing.Point(184, 497);
 			this.lblSelSize.Name = "lblSelSize";
-			this.lblSelSize.Size = new System.Drawing.Size(84, 13);
+			this.lblSelSize.Size = new System.Drawing.Size(45, 13);
 			this.lblSelSize.TabIndex = 8;
-			this.lblSelSize.Text = "No world loaded";
+			this.lblSelSize.Text = "noworld";
 			// 
 			// rbtEnd
 			// 
@@ -230,7 +230,7 @@
 			this.rbtEnd.Name = "rbtEnd";
 			this.rbtEnd.Size = new System.Drawing.Size(43, 17);
 			this.rbtEnd.TabIndex = 6;
-			this.rbtEnd.Text = "End";
+			this.rbtEnd.Text = "end";
 			this.rbtEnd.UseVisualStyleBackColor = true;
 			this.rbtEnd.CheckedChanged += new System.EventHandler(this.rbtEnd_CheckedChanged);
 			// 
@@ -240,9 +240,9 @@
 			this.rbtNether.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
 			this.rbtNether.Location = new System.Drawing.Point(85, 30);
 			this.rbtNether.Name = "rbtNether";
-			this.rbtNether.Size = new System.Drawing.Size(58, 17);
+			this.rbtNether.Size = new System.Drawing.Size(57, 17);
 			this.rbtNether.TabIndex = 6;
-			this.rbtNether.Text = "Nether";
+			this.rbtNether.Text = "nether";
 			this.rbtNether.UseVisualStyleBackColor = true;
 			this.rbtNether.CheckedChanged += new System.EventHandler(this.rbtNether_CheckedChanged);
 			// 
@@ -253,10 +253,10 @@
 			this.rbtOver.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
 			this.rbtOver.Location = new System.Drawing.Point(6, 30);
 			this.rbtOver.Name = "rbtOver";
-			this.rbtOver.Size = new System.Drawing.Size(75, 17);
+			this.rbtOver.Size = new System.Drawing.Size(73, 17);
 			this.rbtOver.TabIndex = 6;
 			this.rbtOver.TabStop = true;
-			this.rbtOver.Text = "Overworld";
+			this.rbtOver.Text = "overworld";
 			this.rbtOver.UseVisualStyleBackColor = true;
 			this.rbtOver.CheckedChanged += new System.EventHandler(this.rbtOver_CheckedChanged);
 			// 
@@ -290,16 +290,15 @@
 			this.pboxWorldXZ.MouseUp += new System.Windows.Forms.MouseEventHandler(this.MoveXZEnd);
 			this.pboxWorldXZ.MouseWheel += new System.Windows.Forms.MouseEventHandler(this.ZoomXZ);
 			// 
-			// label2
+			// lblInfo
 			// 
-			this.label2.AutoSize = true;
-			this.label2.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.label2.Location = new System.Drawing.Point(3, 8);
-			this.label2.Name = "label2";
-			this.label2.Size = new System.Drawing.Size(701, 13);
-			this.label2.TabIndex = 7;
-			this.label2.Text = "Select a world from the dropdown list, then left click to create a box around the" +
-    " wished area. Right/Middle click: Move view, Mouse wheel: Zoom.\r\n";
+			this.lblInfo.AutoSize = true;
+			this.lblInfo.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+			this.lblInfo.Location = new System.Drawing.Point(3, 8);
+			this.lblInfo.Name = "lblInfo";
+			this.lblInfo.Size = new System.Drawing.Size(25, 13);
+			this.lblInfo.TabIndex = 7;
+			this.lblInfo.Text = "info";
 			// 
 			// frmImport
 			// 
@@ -307,13 +306,12 @@
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(200)))), ((int)(((byte)(200)))));
 			this.ClientSize = new System.Drawing.Size(1005, 584);
-			this.Controls.Add(this.label2);
+			this.Controls.Add(this.lblInfo);
 			this.Controls.Add(this.splitContainer1);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
 			this.Name = "frmImport";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-			this.Text = "Import from world";
-			this.Load += new System.EventHandler(this.frmImport_Load);
+			this.Text = "title";
 			this.splitContainer1.Panel1.ResumeLayout(false);
 			this.splitContainer1.Panel1.PerformLayout();
 			this.splitContainer1.Panel2.ResumeLayout(false);
@@ -332,7 +330,7 @@
 #endregion
 
 		private System.Windows.Forms.Panel panXY;
-		private System.Windows.Forms.Label label1;
+		private System.Windows.Forms.Label lblWorld;
 		private System.Windows.Forms.ComboBox cbxSaves;
 		private System.Windows.Forms.Button btnDone;
 		private System.Windows.Forms.Panel panYZ;
@@ -342,12 +340,12 @@
 		private System.Windows.Forms.RadioButton rbtOver;
 		private System.Windows.Forms.PictureBox pboxWorldXY;
 		private System.Windows.Forms.PictureBox pboxWorldXZ;
-		private System.Windows.Forms.Label label2;
+		private System.Windows.Forms.Label lblInfo;
 		private System.Windows.Forms.Label lblSelSize;
 		private System.Windows.Forms.Button btnCancel;
 		private System.Windows.Forms.Button btnFilters;
-		private System.Windows.Forms.Label label3;
-		private System.Windows.Forms.Label label4;
+		private System.Windows.Forms.Label lblTopDownView;
+		private System.Windows.Forms.Label lblCrossSectionView;
 		private System.Windows.Forms.Label lblFilterInfo;
 
 	}

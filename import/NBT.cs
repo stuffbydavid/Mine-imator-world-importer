@@ -5,7 +5,7 @@ using System.IO.Compression;
 
 namespace import
 {
-	enum TagType
+	public enum TagType
 	{
 		END = 0,
 		BYTE = 1,
@@ -22,7 +22,7 @@ namespace import
 		LONG_ARRAY = 12,
 	}
 
-	enum DataFormat
+	public enum DataFormat
 	{
 		RAW,
 		GZIP,
@@ -30,7 +30,7 @@ namespace import
 	}
 
 	/// <summary>A NBT tag</summary>
-	class NBTTag
+	public class NBTTag
 	{
 		public TagType type;
 		public dynamic value;
@@ -43,7 +43,7 @@ namespace import
 	}
 
 	/// <summary>A NBT list</summary>
-	class NBTList : NBTTag
+	public class NBTList : NBTTag
 	{
 		public TagType listType;
 
@@ -64,15 +64,20 @@ namespace import
 
 		public dynamic Get(int index)
 		{
-			return value[index].value;
+			return value[index];
 		}
 	}
 
 	/// <summary>A NBT compound</summary>
-	class NBTCompound : NBTTag
+	public class NBTCompound : NBTTag
 	{
 		public NBTCompound() : base(TagType.COMPOUND, new Dictionary<string, NBTTag>())
 		{
+		}
+
+		public void AddTag(string name, NBTTag tag)
+		{
+			value[name] = tag;
 		}
 
 		public void Add(TagType type, string name, dynamic val)
@@ -85,12 +90,12 @@ namespace import
 			if (!value.ContainsKey(name))
 				return null;
 
-			return value[name].value;
+			return value[name];
 		}
 	}
 
 	/// <summary>Used for writing to the NBT format (Named Binary Tag) that Minecraft files use.</summary>
-	class NBTWriter
+	public class NBTWriter
 	{
 		private string outFilename;
 		private FileStream outStream;
@@ -100,13 +105,13 @@ namespace import
 		public void Save(string filename, string rootName, NBTCompound root)
 		{
 			outFilename = filename;
-			outStream = File.Create("temp.nbt");
+			outStream = File.Create(filename + ".nbt");
 			WriteByte((byte)TagType.COMPOUND);
 			WriteString(rootName);
 			WriteTAGCompound(root);
 			outStream.Close();
-			GZIPCompressFile("temp.nbt", outFilename);
-			File.Delete("temp.nbt");
+			GZIPCompressFile(filename + ".nbt", outFilename);
+			File.Delete(filename + ".nbt");
 		}
 
 		// Write tags
@@ -151,11 +156,11 @@ namespace import
 					break;
 
 				case TagType.LIST:
-					WriteTAGList(tag.value);
+					WriteTAGList((NBTList)tag);
 					break;
 
 				case TagType.COMPOUND:
-					WriteTAGCompound(tag.value);
+					WriteTAGCompound((NBTCompound)tag);
 					break;
 
 				case TagType.INT_ARRAY:
@@ -263,7 +268,7 @@ namespace import
 	}
 
 	/// <summary>Used for reading the NBT format (Named Binary Tag) that Minecraft files use.</summary>
-	class NBTReader
+	public class NBTReader
 	{
 		private int readPos;
 		public byte[] data;
@@ -333,12 +338,10 @@ namespace import
 					break;
 
 				case TagType.LIST:
-					value = ReadTAGList();
-					break;
+					return ReadTAGList();
 
 				case TagType.COMPOUND:
-					value = ReadTAGCompound();
-					break;
+					return ReadTAGCompound();
 
 				case TagType.INT_ARRAY:
 					int intArrLen = ReadIntBE();

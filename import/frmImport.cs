@@ -53,7 +53,7 @@ namespace import
 				}
 			}
 
-			public string name;
+			public string name, displayName;
 			public Block.Preview preview = null;
 			public Dictionary<string, Block.State> states = new Dictionary<string, Block.State>();
 			public Block.Preview[] legacyDataPreview = new Block.Preview[16];
@@ -67,11 +67,15 @@ namespace import
 		}
 
 		// Folders
-		static string mcSaveFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\.minecraft\saves";
-		static string dataFolder = @"D:\OneDrive\Projects\Minecraft\Mine-imator\Source\datafiles\Data";
-		static string mcAssetsFile = dataFolder + @"\Minecraft\1.12.midata";
-		static string miLangFile = dataFolder + @"\Languages\english.milanguage";
-		static string miBlockPreviewFile = dataFolder + @"\blockpreview.midata";
+		public static string mcSaveFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\.minecraft\saves";
+		public static string dataFolder = @"D:\OneDrive\Projects\Minecraft\Mine-imator\Source\datafiles\Data";
+		public static string mcAssetsFile = dataFolder + @"\Minecraft\1.12.midata";
+		public static string miLangFile = dataFolder + @"\Languages\english.milanguage";
+		public static string miBlockPreviewFile = dataFolder + @"\blockpreview.midata";
+		public static string miBlockFilterFile = dataFolder + @"\blockfilter.midata";
+
+		// Language
+		public Dictionary<string, string> languageMap = new Dictionary<string, string>();
 
 		// Blocks
 		public Dictionary<string, Block> blockNameMap = new Dictionary<string, Block>();
@@ -105,15 +109,15 @@ namespace import
 
 		public frmImport(string[] args)
 		{
-			if (!File.Exists(mcAssetsFile))
-			{
-				MessageBox.Show("Could not find Minecraft assets, re-install the program.");
-				Application.Exit();
-			}
-
 			if (!File.Exists(miLangFile))
 			{
 				MessageBox.Show("Could not find translation file, re-install the program.");
+				Application.Exit();
+			}
+
+			if (!File.Exists(mcAssetsFile))
+			{
+				MessageBox.Show("Could not find Minecraft assets, re-install the program.");
 				Application.Exit();
 			}
 
@@ -124,10 +128,30 @@ namespace import
 			}
 
 			InitializeComponent();
+
+			LoadLanguage(miLangFile);
 			LoadBlockPreviews(miBlockPreviewFile);
 			LoadBlocks(mcAssetsFile);
-			LoadFilterBlocks();
 
+			if (File.Exists(miBlockFilterFile))
+				LoadFilterBlocks(miBlockFilterFile);
+
+			// Set text
+			Text = GetText("title");
+			lblInfo.Text = GetText("info");
+			lblTopDownView.Text = GetText("topdownview");
+			lblCrossSectionView.Text = GetText("crosssectionview");
+			lblWorld.Text = GetText("world") + ":";
+			rbtOver.Text = GetText("overworld");
+			rbtNether.Text = GetText("nether");
+			rbtEnd.Text = GetText("end");
+			btnDone.Text = GetText("done");
+			btnFilters.Text = GetText("filters");
+			btnCancel.Text = GetText("cancel");
+			lblFilterInfo.Text = GetText("filtersalert");
+			UpdateSizeLabel();
+
+			// Parse arguments
 			savefile = "";
 			for (int i = 0; i < args.Length; i++)
 			{
@@ -135,56 +159,60 @@ namespace import
 					savefile += " ";
 				savefile += args[i];
 			}
+
+			// Get worlds
+			if (!Directory.Exists(mcSaveFolder))
+				return;
+			DirectoryInfo dir = new DirectoryInfo(mcSaveFolder);
+			foreach (DirectoryInfo d in dir.GetDirectories())
+			{
+				if (File.Exists(d.FullName + @"\level.dat")) cbxSaves.Items.Add(d.Name);
+			}
 		}
 
-		/// <summary>Loads the world from the combobox and resets the view.</summary>
-		private void LoadWorld()
+		/// <summary>Loads the .milanguage file containing the text of the program.</summary>
+		private void LoadLanguage(string filename)
 		{
-			if (cbxSaves.SelectedIndex == -1)
-				return;
-
-			string worldfolder = mcSaveFolder + @"\" + cbxSaves.Items[cbxSaves.SelectedIndex];
-
-			Dimension dim;
-			if (rbtNether.Checked)
-				dim = Dimension.NETHER;
-			else if (rbtEnd.Checked)
-				dim = Dimension.END;
-			else
-				dim = Dimension.OVERWORLD;
-
-			if (!world.CanLoad(worldfolder, dim))
-				return;
-
-			if (world.Load(worldfolder, dim))
+			string json = File.ReadAllText(filename);
+			try
 			{
-				XYImageMidPos = new Point((int)world.playerPos.X, (int)world.playerPos.Y);
-				XYImageZoom = 8;
-				selectStart = new Point3D<int>((int)world.playerPos.X - 10, (int)world.playerPos.Y - 10, (int)world.playerPos.Z - 10);
-				selectEnd = new Point3D<int>((int)world.playerPos.X + 10, (int)world.playerPos.Y + 10, (int)world.playerPos.Z + 10);
-				selectStart.Z = Math.Max(Math.Min(selectStart.Z, 255), 0);
-				selectEnd.Z = Math.Max(Math.Min(selectEnd.Z, 255), 0);
-				UpdateSizeLabel();
-				btnDone.Enabled = true;
-				XZImageMidPos = new Point(selectStart.X + (selectEnd.X - selectStart.X) / 2, selectStart.Z + (selectEnd.Z - selectStart.Z) / 2);
-
-				UpdateXYMap(0, 0);
-				UpdateXZMap();
+				JsonObject root = JsonConvert.DeserializeObject<JsonObject>(json);
+				LoadLanguageObject("", root);
 			}
-			else
+			catch (Exception e)
 			{
-				pboxWorldXY.Image = new Bitmap(1, 1);
-				pboxWorldXZ.Image = new Bitmap(1, 1);
-				btnDone.Enabled = false;
+				MessageBox.Show("Failed to load the language file.");
+				Application.Exit();
 			}
 		}
 
-		/// <summary>Saves the selection into a .schematic file</summary>
+		private void LoadLanguageObject(string prefix, JsonObject root)
+		{
+			foreach (JsonNameValuePair key in root)
+			{
+				if (key.Key.Contains("/"))
+					LoadLanguageObject(prefix + key.Key.Replace("/", ""), key.Value.ToObject<JsonObject>());
+				else
+					languageMap[prefix + key.Key] = key.Value;
+			}
+		}
+
+		/// <summary>Gets a specific text from the loaded language file.</summary>
+		public string GetText(string name, string prefix = "importfromworld")
+		{
+			if (languageMap.ContainsKey(prefix + name))
+				return languageMap[prefix + name];
+			else
+				return "<Text not found for \"" + prefix + name + "\">";
+		}
+
+		/// <summary>Saves the selection into a .schematic file.</summary>
 		private void SaveBlocks(string filename)
 		{
-			int sx, sy, sz, ex, ey, ez;
+			world.SaveReset();
 
 			#region Trim unnecessary space
+			int sx, sy, sz, ex, ey, ez;
 			sx = selectStart.X;
 			sy = selectStart.Y;
 			sz = selectStart.Z;
@@ -200,8 +228,7 @@ namespace import
 				{
 					for (int z = selectStart.Z; z <= selectEnd.Z; z++)
 					{
-						World.Block block = world.GetBlock(sx, y, z);
-						if (block != null && block.legacyId > 0 && !isFiltered(block))
+						if (IsLegacyBlockNotAir(sx, y, z))
 						{
 							foundblock = true;
 							break;
@@ -220,8 +247,7 @@ namespace import
 				{
 					for (int z = selectStart.Z; z <= selectEnd.Z; z++)
 					{
-						World.Block block = world.GetBlock(ex, y, z);
-						if (block != null && block.legacyId > 0 && !isFiltered(block))
+						if (IsLegacyBlockNotAir(ex, y, z))
 						{
 							foundblock = true;
 							break;
@@ -240,8 +266,7 @@ namespace import
 				{
 					for (int z = selectStart.Z; z <= selectEnd.Z; z++)
 					{
-						World.Block block = world.GetBlock(x, sy, z);
-						if (block != null && block.legacyId > 0 && !isFiltered(block))
+						if (IsLegacyBlockNotAir(x, sy, z))
 						{
 							foundblock = true;
 							break;
@@ -260,8 +285,7 @@ namespace import
 				{
 					for (int z = selectStart.Z; z <= selectEnd.Z; z++)
 					{
-						World.Block block = world.GetBlock(x, ey, z);
-						if (block != null && block.legacyId > 0 && !isFiltered(block))
+						if (IsLegacyBlockNotAir(x, ey, z))
 						{
 							foundblock = true;
 							break;
@@ -280,8 +304,7 @@ namespace import
 				{
 					for (int y = selectStart.Y; y <= selectEnd.Y; y++)
 					{
-						World.Block block = world.GetBlock(x, y, sz);
-						if (block != null && block.legacyId > 0 && !isFiltered(block))
+						if (IsLegacyBlockNotAir(x, y, sz))
 						{
 							foundblock = true;
 							break;
@@ -300,8 +323,7 @@ namespace import
 				{
 					for (int y = selectStart.Y; y <= selectEnd.Y; y++)
 					{
-						World.Block block = world.GetBlock(x, y, ez);
-						if (block != null && block.legacyId > 0 && !isFiltered(block))
+						if (IsLegacyBlockNotAir(x, y, ez))
 						{
 							foundblock = true;
 							break;
@@ -317,31 +339,53 @@ namespace import
 			int len = (ey - sy) + 1, wid = (ex - sx) + 1, hei = (ez - sz) + 1;
 			byte[] blockLegacyIdArray = new byte[len * wid * hei];
 			byte[] blockLegacyDataArray = new byte[len * wid * hei];
-			int pos = 0;
+			NBTList tileEntities = new NBTList(TagType.COMPOUND);
 
+			int pos = 0;
 			for (int z = sz; z <= ez; z++)
 			{
 				for (int y = sy; y <= ey; y++)
 				{
 					for (int x = sx; x <= ex; x++)
 					{
-						World.Block block = world.GetBlock(x, y, z);
-						if (block == null || isFiltered(block))
+						Chunk chunk = world.GetChunk(x, y);
+
+						// Add tile entities of newly iterated chunk
+						if (!chunk.tileEntitiesAdded)
+						{
+							foreach (NBTTag tag in chunk.tileEntities.value)
+							{
+								NBTCompound comp = (NBTCompound)tag;
+								int teX = comp.Get("x").value;
+								int teY = comp.Get("z").value;
+								int teZ = comp.Get("y").value;
+								if (teX < sx || teX > ex || teY < sy || teY > ey || teZ < sz || teZ > ez)
+									continue;
+
+								tileEntities.Add(comp);
+							}
+
+							chunk.tileEntitiesAdded = true;
+						}
+
+						// Add block
+						World.LegacyBlock block = world.GetLegacyBlock(chunk, x, y, z);
+						if (block == null || block.id == 0 || IsLegacyBlockFiltered(block))
 						{
 							blockLegacyIdArray[pos] = 0;
 							blockLegacyDataArray[pos] = 0;
 						}
 						else
 						{
-							blockLegacyIdArray[pos] = block.legacyId;
-							blockLegacyDataArray[pos] = block.legacyData;
+							blockLegacyIdArray[pos] = block.id;
+							blockLegacyDataArray[pos] = block.data;
 						}
-
 						pos++;
 					}
 				}
 			}
 
+			// Create schematic
 			NBTCompound schematic = new NBTCompound();
 			schematic.Add(TagType.SHORT, "Length", len);
 			schematic.Add(TagType.SHORT, "Width", wid);
@@ -350,6 +394,7 @@ namespace import
 			schematic.Add(TagType.STRING, "FromMap", world.name);
 			schematic.Add(TagType.BYTE_ARRAY, "Blocks", blockLegacyIdArray);
 			schematic.Add(TagType.BYTE_ARRAY, "Data", blockLegacyDataArray);
+			schematic.AddTag("TileEntities", tileEntities);
 
 			NBTWriter nbt = new NBTWriter();
 			try
@@ -358,26 +403,42 @@ namespace import
 			}
 			catch (Exception e)
 			{
-				MessageBox.Show("Could not write to file. Check that it's not used by another process.");
+				MessageBox.Show(GetText("fileopened"));
 			}
 		}
 
-		private bool isFiltered(World.Block block)
+		private bool IsLegacyBlockNotAir(int x, int y, int z)
 		{
-			/*if (filterBlocksActive && blockMap.ContainsKey(idData.id) && filterBlocks.Contains(blockMap[idData.id].name[idData.data]))
+			World.LegacyBlock block = world.GetLegacyBlock(x, y, z);
+			return (block != null && block.id > 0 && !IsLegacyBlockFiltered(block));
+		}
+
+		private bool IsLegacyBlockFiltered(World.LegacyBlock block)
+		{
+			if (filterBlocksActive && blockLegacyIdMap.ContainsKey(block.id) && filterBlocks.Contains(blockLegacyIdMap[block.id].name))
 				return !filterBlocksInvert;
 
-			return filterBlocksInvert;*/
-			return false;
+			return filterBlocksInvert;
 		}
 
 		/// <summary>Updates the label showing the selection size.</summary>
 		private void UpdateSizeLabel()
 		{
-			int len = Math.Abs(selectEnd.X - selectStart.X) + 1;
-			int wid = Math.Abs(selectEnd.Y - selectStart.Y) + 1;
-			int hei = Math.Abs(selectEnd.Z - selectStart.Z) + 1;
-			lblSelSize.Text = len + "x" + wid + "x" + hei + " (" + len * wid * hei + " blocks)";
+			if (world.filename != "")
+			{
+				int len = Math.Abs(selectEnd.X - selectStart.X) + 1;
+				int wid = Math.Abs(selectEnd.Y - selectStart.Y) + 1;
+				int hei = Math.Abs(selectEnd.Z - selectStart.Z) + 1;
+				string text = GetText("size");
+
+				text = text.Replace("%1", len.ToString());
+				text = text.Replace("%2", wid.ToString());
+				text = text.Replace("%3", hei.ToString());
+				text = text.Replace("%4", (len * wid * hei).ToString());
+				lblSelSize.Text = text;
+			}
+			else
+				lblSelSize.Text = GetText("noworld");
 		}
 
 		/// <summary>Loads the blocks from the Minecraft version file.</summary>
@@ -394,8 +455,10 @@ namespace import
 					Block block = new Block(curBlock["name"]);
 
 					// Get preview from name if available
-					if (blockPreviewMap.ContainsKey(curBlock["name"]))
-						block.preview = blockPreviewMap[curBlock["name"]];
+					if (blockPreviewMap.ContainsKey(block.name))
+						block.preview = blockPreviewMap[block.name];
+
+					block.displayName = GetText(block.name, "block");
 
 					// Get preview from file if available
 					if (curBlock.ContainsKey("file") && blockPreviewMap.ContainsKey(curBlock["file"]))
@@ -467,13 +530,13 @@ namespace import
 				switch (pair.Key)
 				{
 					// Bitmasks
-					case "0x1":	LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 1, 1); break;
-					case "0x2": LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 2, 2); break;
-					case "0x4": LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 4, 4); break;
-					case "0x8": LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 8, 8); break;
-					case "0x1+0x2": LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 3, 1); break;
+					case "0x1":			LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 1, 1); break;
+					case "0x2":			LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 2, 2); break;
+					case "0x4":			LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 4, 4); break;
+					case "0x8":			LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 8, 8); break;
+					case "0x1+0x2":		LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 3, 1); break;
 					case "0x1+0x2+0x4": LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 7, 1); break;
-					case "0x4+0x8": LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 12, 4); break;
+					case "0x4+0x8":		LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 12, 4); break;
 
 					// Number (apply previous bitmask)
 					default:
@@ -556,11 +619,54 @@ namespace import
 			}
 		}
 
+		/// <summary>Loads the world from the combobox and resets the view.</summary>
+		private void LoadWorld()
+		{
+			if (cbxSaves.SelectedIndex == -1)
+				return;
+
+			string worldfolder = mcSaveFolder + @"\" + cbxSaves.Items[cbxSaves.SelectedIndex];
+
+			Dimension dim;
+			if (rbtNether.Checked)
+				dim = Dimension.NETHER;
+			else if (rbtEnd.Checked)
+				dim = Dimension.END;
+			else
+				dim = Dimension.OVERWORLD;
+
+			if (!world.CanLoad(worldfolder, dim))
+				return;
+
+			if (world.Load(worldfolder, dim))
+			{
+				XYImageMidPos = new Point((int)world.playerPos.X, (int)world.playerPos.Y);
+				XYImageZoom = 8;
+				selectStart = new Point3D<int>((int)world.playerPos.X - 10, (int)world.playerPos.Y - 10, (int)world.playerPos.Z - 10);
+				selectEnd = new Point3D<int>((int)world.playerPos.X + 10, (int)world.playerPos.Y + 10, (int)world.playerPos.Z + 10);
+				selectStart.Z = Math.Max(Math.Min(selectStart.Z, 255), 0);
+				selectEnd.Z = Math.Max(Math.Min(selectEnd.Z, 255), 0);
+				UpdateSizeLabel();
+				btnDone.Enabled = true;
+				XZImageMidPos = new Point(selectStart.X + (selectEnd.X - selectStart.X) / 2, selectStart.Z + (selectEnd.Z - selectStart.Z) / 2);
+
+				UpdateXYMap(0, 0);
+				UpdateXZMap();
+			}
+			else
+			{
+				MessageBox.Show(GetText("worldopened"));
+				pboxWorldXY.Image = new Bitmap(1, 1);
+				pboxWorldXZ.Image = new Bitmap(1, 1);
+				btnDone.Enabled = false;
+			}
+		}
+
 		/// <summary>Gets the XY bitmap of the given chunk. If none have been generated, create it.</summary>
 		/// <param name="chunk">The wished chunk.</param>
 		private Bitmap GetChunkXYImage(Chunk chunk)
 		{
-			if (chunk.hasXYImage)
+			if (chunk.XYImage != null)
 				return chunk.XYImage.Image;
 			
 			chunk.XYImage = new FastBitmap(16, 16);
@@ -571,68 +677,74 @@ namespace import
 				for (int y = 0; y < 16; y++)
 				{
 					Color finalColor = Color.Transparent;
-					for (int z = 255; z >= 0; z--)
+					for (int s = 15; s >= 0; s--)
 					{
-						Chunk.Section section = chunk.sections[z / 16];
+						Chunk.Section section = chunk.sections[s];
 						if (section == null)
 							continue;
 
-						byte id = section.blocks[x, y, z % 16].legacyId;
-						if (id == 0)
-							continue;
-
-						Color blockColor = GetBlockXYColor(section.blocks[x, y, z % 16]);
-						if (blockColor != Color.Transparent)
+						for (int z = 15; z >= 0; z--)
 						{
-							bool highlight = false, shade = false;
-							World.Block blockCheck;
-							Color blockCheckColor;
+							byte id = section.blockLegacyIds[x, y, z];
+							if (id == 0)
+								continue;
 
-							// Shade
-							if (z < 255)
+							byte data = section.blockLegacyDatas[x, y, z];
+							World.LegacyBlock block = new World.LegacyBlock(id, data);
+
+							Color blockColor = GetLegacyBlockXYColor(block);
+							if (blockColor != Color.Transparent)
 							{
-								blockCheck = world.GetBlock(chunk.X * 16 + x - 1, chunk.Y * 16 + y, z + 1);
-								if (blockCheck != null)
-								{
-									blockCheckColor = GetBlockXYColor(blockCheck);
-									if (blockCheckColor.A == 255)
-										shade = true;
-								}
+								bool highlight = false, shade = false;
+								World.LegacyBlock blockCheck;
+								Color blockCheckColor;
 
-								if (!shade)
+								// Shade
+								if (s * 16 + z < 255)
 								{
-									blockCheck = world.GetBlock(chunk.X * 16 + x, chunk.Y * 16 + y - 1, z + 1);
+									blockCheck = world.GetLegacyBlock(chunk.X * 16 + x - 1, chunk.Y * 16 + y, s * 16 + z + 1);
 									if (blockCheck != null)
 									{
-										blockCheckColor = GetBlockXYColor(blockCheck);
+										blockCheckColor = GetLegacyBlockXYColor(blockCheck);
 										if (blockCheckColor.A == 255)
 											shade = true;
 									}
+
+									if (!shade)
+									{
+										blockCheck = world.GetLegacyBlock(chunk.X * 16 + x, chunk.Y * 16 + y - 1, s * 16 + z + 1);
+										if (blockCheck != null)
+										{
+											blockCheckColor = GetLegacyBlockXYColor(blockCheck);
+											if (blockCheckColor.A == 255)
+												shade = true;
+										}
+									}
 								}
-							}
 
-							// Highlight
-							blockCheck = world.GetBlock(chunk.X * 16 + x - 1, chunk.Y * 16 + y, z);
-							if (blockCheck == null || blockCheck.legacyId == 0)
-								highlight = true;
-
-							if (!highlight)
-							{
-								blockCheck = world.GetBlock(chunk.X * 16 + x, chunk.Y * 16 + y - 1, z - 1);
-								if (blockCheck == null || blockCheck.legacyId == 0)
+								// Highlight
+								blockCheck = world.GetLegacyBlock(chunk.X * 16 + x - 1, chunk.Y * 16 + y, s * 16 + z);
+								if (blockCheck == null || blockCheck.id == 0)
 									highlight = true;
+
+								if (s * 16 + z > 0 && !highlight)
+								{
+									blockCheck = world.GetLegacyBlock(chunk.X * 16 + x, chunk.Y * 16 + y - 1, s * 16 + z - 1);
+									if (blockCheck == null || blockCheck.id == 0)
+										highlight = true;
+								}
+
+								// Apply
+								if (highlight)
+									blockColor = Util.ColorBrighter(blockColor, 15);
+								else if (shade)
+									blockColor = Util.ColorBrighter(blockColor, -15);
+
+								// Add to final result, cancel if alpha is full
+								finalColor = Util.ColorAdd(blockColor, finalColor);
+								if (finalColor.A == 255)
+									break;
 							}
-
-							// Apply
-							if (highlight)
-								blockColor = Util.ColorBrighter(blockColor, 15);
-							else if (shade)
-								blockColor = Util.ColorBrighter(blockColor, -15);
-
-							// Add to final result, cancel if alpha is full
-							finalColor = Util.ColorAdd(blockColor, finalColor);
-							if (finalColor.A == 255)
-								break;
 						}
 					}
 
@@ -641,7 +753,6 @@ namespace import
 			}
 
 			chunk.XYImage.UnlockImage();
-			chunk.hasXYImage = true;
 
 			return chunk.XYImage.Image;
 		}
@@ -650,7 +761,7 @@ namespace import
 		/// <param name="chunk">The wished chunk.</param>
 		private Bitmap GetChunkXZImage(Chunk chunk)
 		{
-			if (chunk.hasXZImage)
+			if (chunk.XZImage != null)
 				return chunk.XZImage.Image;
 
 			chunk.XZImage = new FastBitmap(16, 256);
@@ -658,46 +769,55 @@ namespace import
 
 			for (int x = 0; x < 16; x++)
 			{
-				for (int z = 0; z < 256; z++)
+				for (int s = 15; s >= 0; s--)
 				{
-					Chunk.Section section = chunk.sections[z / 16];
+					Chunk.Section section = chunk.sections[s];
 					if (section == null)
 						continue;
 
-					Color finalColor = Color.Transparent;
-					for (int y = 15; y >= 0; y--)
+					for (int z = 15; z >= 0; z--)
 					{
-						Color blockColor = GetBlockXZColor(section.blocks[x, y, z % 16]);
-						if (blockColor != Color.Transparent)
+						Color finalColor = Color.Transparent;
+						for (int y = 15; y >= 0; y--)
 						{
-							// Add to final result, cancel if alpha is full
-							finalColor = Util.ColorAdd(blockColor, finalColor);
-							if (finalColor.A == 255)
+							byte id = section.blockLegacyIds[x, y, z];
+							if (id == 0)
+								continue;
+
+							byte data = section.blockLegacyDatas[x, y, z];
+							World.LegacyBlock block = new World.LegacyBlock(id, data);
+
+							Color blockColor = GetLegacyBlockXZColor(block);
+							if (blockColor != Color.Transparent)
 							{
-								finalColor = Util.ColorBrighter(finalColor, (int)(-60.0f * (1.0f - (float)y / 15.0f)));
-								break;
+								// Add to final result, cancel if alpha is full
+								finalColor = Util.ColorAdd(blockColor, finalColor);
+								if (finalColor.A == 255)
+								{
+									finalColor = Util.ColorBrighter(finalColor, (int)(-60.0f * (1.0f - (float)y / 15.0f)));
+									break;
+								}
 							}
 						}
-					}
 
-					if (finalColor != Color.Transparent)
-						chunk.XZImage.SetPixel(x, chunk.XZImage.Image.Height - 1 - z, finalColor); 
+						if (finalColor != Color.Transparent)
+							chunk.XZImage.SetPixel(x, chunk.XZImage.Image.Height - 1 - (s * 16 + z), finalColor);
+					}
 				}
 			}
 
 			chunk.XZImage.UnlockImage();
-			chunk.hasXZImage = true;
 
 			return chunk.XZImage.Image;
 		}
 
 		/// <summary>Gets the top-down drawing color of the block.</summary>
 		/// <param name="block">The block to get the color from.</param>
-		private Color GetBlockXYColor(World.Block worldBlock)
+		private Color GetLegacyBlockXYColor(World.LegacyBlock block)
 		{
-			if (blockLegacyIdMap.ContainsKey(worldBlock.legacyId))
+			if (blockLegacyIdMap.ContainsKey(block.id))
 			{
-				Block.Preview preview = blockLegacyIdMap[worldBlock.legacyId].legacyDataPreview[worldBlock.legacyData];
+				Block.Preview preview = blockLegacyIdMap[block.id].legacyDataPreview[block.data];
 				if (preview != null)
 					return preview.XYColor;
 			}
@@ -707,11 +827,11 @@ namespace import
 
 		/// <summary>Gets the cross-section drawing color of the block.</summary>
 		/// <param name="block">The block to get the color from.</param>
-		private Color GetBlockXZColor(World.Block worldBlock)
+		private Color GetLegacyBlockXZColor(World.LegacyBlock block)
 		{
-			if (blockLegacyIdMap.ContainsKey(worldBlock.legacyId))
+			if (blockLegacyIdMap.ContainsKey(block.id))
 			{
-				Block.Preview preview = blockLegacyIdMap[worldBlock.legacyId].legacyDataPreview[worldBlock.legacyData];
+				Block.Preview preview = blockLegacyIdMap[block.id].legacyDataPreview[block.data];
 				if (preview != null)
 					return preview.XZColor;
 			}
@@ -720,22 +840,20 @@ namespace import
 		}
 
 		/// <summary>Loads which blocks to filter out.</summary>
-		public void LoadFilterBlocks()
+		public void LoadFilterBlocks(string filename)
 		{
-			if (File.Exists("blocks.mifilter"))
+			string json = File.ReadAllText(filename);
+			try
 			{
-				string json = File.ReadAllText("blocks.mifilter");
-				try
-				{
-					Dictionary<string, dynamic> root = (Dictionary<string, dynamic>)JsonConvert.DeserializeObject(json);
-					filterBlocksActive = root["active"];
-					filterBlocksInvert = root["invert"];
-					filterBlocks = root["blocks"];
-				}
-				catch (Exception e)
-				{
-					// Silently ignore filtered blocks
-				}
+				JsonObject root = JsonConvert.DeserializeObject<JsonObject>(json);
+				filterBlocksActive = root["active"];
+				filterBlocksInvert = root["invert"];
+				filterBlocks = root["blocks"].ToObject<List<string>>();
+			}
+			catch (Exception e)
+			{
+				MessageBox.Show("Failed to load block filter");
+				Application.Exit();
 			}
 
 			UpdateFilterBlocks();
@@ -744,7 +862,7 @@ namespace import
 		/// <summary>Updates the label of filterblocks.</summary>
 		public void UpdateFilterBlocks()
 		{
-			lblFilterInfo.Visible = filterBlocksActive;
+			lblFilterInfo.Visible = (filterBlocksActive && (filterBlocks.Count > 0 || filterBlocksInvert));
 		}
 
 		/// <summary>Updates the bitmap of the XY map.</summary>
@@ -1325,18 +1443,6 @@ namespace import
 		private void ResizeXZ(object sender, EventArgs e)
 		{
 			UpdateXZMap();
-		}
-
-		private void frmImport_Load(object sender, EventArgs e)
-		{
-			// Get worlds
-			if (!Directory.Exists(mcSaveFolder))
-				return;
-			DirectoryInfo dir = new DirectoryInfo(mcSaveFolder);
-			foreach (DirectoryInfo d in dir.GetDirectories())
-			{
-				if (File.Exists(d.FullName + @"\level.dat")) cbxSaves.Items.Add(d.Name);
-			}
 		}
 
 		private void btnDone_Click(object sender, EventArgs e)

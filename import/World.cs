@@ -18,10 +18,14 @@ namespace import
 	public class World
 	{
 		/// <summary>A Minecraft block in the world.</summary>
-		public class Block
+		public class LegacyBlock
 		{
-			public string id = "";
-			public byte legacyId, legacyData;
+			public byte id, data;
+			public LegacyBlock(byte id, byte data)
+			{
+				this.id = id;
+				this.data = data;
+			}
 		}
 
 		public string filename = "", name = "";
@@ -45,18 +49,18 @@ namespace import
 			// Read level.dat
 			NBTReader nbt = new NBTReader();
 			NBTCompound nbtRoot = nbt.Open(File.ReadAllBytes(filename + @"\level.dat"), DataFormat.GZIP);
-			NBTCompound nbtData = nbtRoot.Get("Data");
+			NBTCompound nbtData = (NBTCompound)nbtRoot.Get("Data");
 
 			// Player position
-			NBTList nbtPlayerPos = nbtData.Get("Player").Get("Pos");
-			playerPos.X = nbtPlayerPos.Get(0);
-			playerPos.Y = nbtPlayerPos.Get(2);
-			playerPos.Z = nbtPlayerPos.Get(1);
+			NBTList nbtPlayerPos = (NBTList)nbtData.Get("Player").Get("Pos");
+			playerPos.X = nbtPlayerPos.Get(0).value;
+			playerPos.Y = nbtPlayerPos.Get(2).value;
+			playerPos.Z = nbtPlayerPos.Get(1).value;
 
 			// Spawn position
-			spawnPos.X = nbtData.Get("SpawnX");
-			spawnPos.Y = nbtData.Get("SpawnZ");
-			spawnPos.Z = nbtData.Get("SpawnY");
+			spawnPos.X = nbtData.Get("SpawnX").value;
+			spawnPos.Y = nbtData.Get("SpawnZ").value;
+			spawnPos.Z = nbtData.Get("SpawnY").value;
 
 			// Get regions
 			if (dim == Dimension.OVERWORLD)
@@ -77,7 +81,6 @@ namespace import
 				}
 				catch (IOException)
 				{
-					MessageBox.Show("This world is used by another process, probably Minecraft or MCEdit. Close them and try again.");
 					regions.Clear();
 					filename = "";
 					return false;
@@ -142,16 +145,36 @@ namespace import
 		}
 
 		/// <summary>Returns the block ID and data found at x, y, z in the world.</summary>
+		/// <param name="chunk">Chunk to check.</param>
 		/// <param name="x">x value to check.</param>
 		/// <param name="y">y value to check.</param>
 		/// <param name="z">z value to check.</param>
-		public Block GetBlock(int x, int y, int z)
+		public LegacyBlock GetLegacyBlock(Chunk chunk, int x, int y, int z)
 		{
-			Chunk chunk = GetChunk(x, y);
-			if (chunk == null || chunk.sections[z / 16] == null)
+			if (chunk.sections[z / 16] == null)
 				return null;
 
-			return chunk.sections[z / 16].blocks[Util.ModNeg(x, 16), Util.ModNeg(y, 16), z % 16];
+			Chunk.Section sec = chunk.sections[z / 16];
+			int sx = Util.ModNeg(x, 16);
+			int sy = Util.ModNeg(y, 16);
+			int sz = z % 16;
+			return new LegacyBlock(sec.blockLegacyIds[sx, sy, sz], sec.blockLegacyDatas[sx, sy, sz]);
+		}
+
+		public LegacyBlock GetLegacyBlock(int x, int y, int z)
+		{
+			Chunk chunk = GetChunk(x, y);
+			if (chunk == null)
+				return null;
+
+			return GetLegacyBlock(chunk, x, y, z);
+		}
+		
+		/// <summary>Runs before saving a schematic.</summary>
+		public void SaveReset()
+		{
+			foreach (Region reg in regions)
+				reg.SaveReset();
 		}
 	}
 }

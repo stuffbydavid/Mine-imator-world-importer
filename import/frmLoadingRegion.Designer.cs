@@ -37,7 +37,7 @@
 			this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedToolWindow;
 			this.Name = "frmLoadingRegion";
 			this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-			this.Text = "Loading...";
+			this.Text = "loadingregion";
 			this.ResumeLayout(false);
 
 		}
