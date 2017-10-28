@@ -190,6 +190,7 @@
 			this.StartPosition = System.Windows.Forms.FormStartPosition.Manual;
 			this.Text = "title";
 			this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.frmFilters_FormClosing);
+			this.Load += new System.EventHandler(this.frmFilters_Load);
 			this.panFilters.ResumeLayout(false);
 			this.panFilters.PerformLayout();
 			this.ResumeLayout(false);

@@ -105,7 +105,7 @@ namespace import
 			if (dim == Dimension.OVERWORLD)
 				folder += @"\region";
 			else
-				folder += @"\DIM" + dim + @"\region";
+				folder += @"\DIM" + (int)dim + @"\region";
 
 			return Directory.Exists(folder);
 		}

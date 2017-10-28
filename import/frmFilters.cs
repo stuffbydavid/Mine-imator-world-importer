@@ -2,7 +2,7 @@
 using System.Windows.Forms;
 using System.IO;
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Web.Script.Serialization;
 
 namespace import
 {
@@ -26,13 +26,16 @@ namespace import
 		}
 
 		frmImport import;
+		JavaScriptSerializer serializer = new JavaScriptSerializer();
 
 		public frmFilters(Form callingForm)
 		{
 			import = callingForm as frmImport;
-
 			InitializeComponent();
+		}
 
+		private void frmFilters_Load(object sender, EventArgs e)
+		{
 			// Set texts
 			Text = import.GetText("filterstitle");
 			cbxActivate.Text = import.GetText("filtersactivate");
@@ -100,11 +103,16 @@ namespace import
 		private void frmFilters_FormClosing(object sender, FormClosingEventArgs e)
 		{
 			// Save filtered blocks to JSON
-			Dictionary<string, dynamic> root = new Dictionary<string, dynamic>();
-			root["active"] = cbxActivate.Checked;
-			root["invert"] = rbtnKeep.Checked;
-			root["blocks"] = import.filterBlocks;
-			File.WriteAllText(frmImport.miBlockFilterFile, JsonConvert.SerializeObject(root, Formatting.Indented).Replace("  ", "\t"));
+			string json = "{\n";
+			json += "\t\"active\": " + (cbxActivate.Checked ? "true" : "false") + ",\n";
+			json += "\t\"invert\": " + (rbtnKeep.Checked ? "true" : "false") + ",\n";
+			json += "\t\"blocks\": [\n";
+			for (int i = 0; i < import.filterBlocks.Count; i++)
+				json += "\t\t\"" + import.filterBlocks[i] + "\"" + (i < import.filterBlocks.Count - 1 ? "," : "" ) + "\n";
+			json += "\t]\n";
+			json += "}";
+
+			File.WriteAllText(frmImport.miBlockFilterFile, json);
 
 			import.filterBlocksActive = cbxActivate.Checked;
 			import.filterBlocksInvert = rbtnKeep.Checked;

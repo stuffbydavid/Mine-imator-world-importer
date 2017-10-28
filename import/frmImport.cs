@@ -4,13 +4,13 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Windows.Forms;
-using Newtonsoft.Json;
+using System.Web.Script.Serialization;
 
 namespace import
 {
 	using JsonObject = Dictionary<string, dynamic>;
 	using JsonNameValuePair = KeyValuePair<string, dynamic>;
-	using JsonList = List<Dictionary<string, dynamic>>;
+	using JsonList = List<dynamic>;
 
 	public partial class frmImport : Form
 	{
@@ -68,7 +68,7 @@ namespace import
 
 		// Folders
 		public static string mcSaveFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\.minecraft\saves";
-		public static string dataFolder = @"D:\OneDrive\Projects\Minecraft\Mine-imator\Source\datafiles\Data";
+		public static string dataFolder = Directory.GetCurrentDirectory(); //@"D:\OneDrive\Projects\Minecraft\Mine-imator\Source\datafiles\Data";
 		public static string mcAssetsFile = dataFolder + @"\Minecraft\1.12.midata";
 		public static string miLangFile = dataFolder + @"\Languages\english.milanguage";
 		public static string miBlockPreviewFile = dataFolder + @"\blockpreview.midata";
@@ -107,27 +107,44 @@ namespace import
 		Bitmap XZMapBitmap = new Bitmap(1, 1);
 		Bitmap XZSelectBitmap = new Bitmap(1, 1);
 
+		JavaScriptSerializer serializer = new JavaScriptSerializer();
+
 		public frmImport(string[] args)
+		{
+			InitializeComponent();
+
+			// Parse arguments
+			savefile = "";
+			for (int i = 0; i < args.Length; i++)
+			{
+				if (i > 0)
+					savefile += " ";
+				savefile += args[i];
+			}
+		}
+
+		private void frmImport_Load(object sender, EventArgs e)
 		{
 			if (!File.Exists(miLangFile))
 			{
 				MessageBox.Show("Could not find translation file, re-install the program.");
 				Application.Exit();
+				return;
 			}
 
 			if (!File.Exists(mcAssetsFile))
 			{
 				MessageBox.Show("Could not find Minecraft assets, re-install the program.");
 				Application.Exit();
+				return;
 			}
 
 			if (!File.Exists(miBlockPreviewFile))
 			{
 				MessageBox.Show("Could not find block previews, run Mine-imator first!");
 				Application.Exit();
+				return;
 			}
-
-			InitializeComponent();
 
 			LoadLanguage(miLangFile);
 			LoadBlockPreviews(miBlockPreviewFile);
@@ -151,22 +168,14 @@ namespace import
 			lblFilterInfo.Text = GetText("filtersalert");
 			UpdateSizeLabel();
 
-			// Parse arguments
-			savefile = "";
-			for (int i = 0; i < args.Length; i++)
-			{
-				if (i > 0)
-					savefile += " ";
-				savefile += args[i];
-			}
-
 			// Get worlds
 			if (!Directory.Exists(mcSaveFolder))
 				return;
 			DirectoryInfo dir = new DirectoryInfo(mcSaveFolder);
 			foreach (DirectoryInfo d in dir.GetDirectories())
 			{
-				if (File.Exists(d.FullName + @"\level.dat")) cbxSaves.Items.Add(d.Name);
+				if (File.Exists(d.FullName + @"\level.dat"))
+					cbxSaves.Items.Add(d.Name);
 			}
 		}
 
@@ -176,7 +185,7 @@ namespace import
 			string json = File.ReadAllText(filename);
 			try
 			{
-				JsonObject root = JsonConvert.DeserializeObject<JsonObject>(json);
+				JsonObject root = (JsonObject)serializer.DeserializeObject(json);
 				LoadLanguageObject("", root);
 			}
 			catch (Exception e)
@@ -191,7 +200,7 @@ namespace import
 			foreach (JsonNameValuePair key in root)
 			{
 				if (key.Key.Contains("/"))
-					LoadLanguageObject(prefix + key.Key.Replace("/", ""), key.Value.ToObject<JsonObject>());
+					LoadLanguageObject(prefix + key.Key.Replace("/", ""), (JsonObject)key.Value);
 				else
 					languageMap[prefix + key.Key] = key.Value;
 			}
@@ -447,8 +456,8 @@ namespace import
 			string json = File.ReadAllText(filename);
 			try
 			{
-				JsonObject root = JsonConvert.DeserializeObject<JsonObject>(json);
-				JsonList blocksList = root["blocks"].ToObject<JsonList>();
+				JsonObject root = (JsonObject)serializer.DeserializeObject(json);
+				JsonList blocksList = new JsonList(root["blocks"]);
 
 				foreach (JsonObject curBlock in blocksList)
 				{
@@ -467,11 +476,11 @@ namespace import
 					// Get states
 					if (curBlock.ContainsKey("states"))
 					{
-						JsonObject states = curBlock["states"].ToObject<JsonObject>();
+						JsonObject states = (JsonObject)curBlock["states"];
 						foreach (JsonNameValuePair pair in states)
 						{
 							Block.State state = new Block.State(pair.Key);
-							List<dynamic> valuesList = pair.Value.ToObject<List<dynamic>>();
+							List<dynamic> valuesList = new JsonList(pair.Value);
 
 							// Get values of this state
 							foreach (dynamic val in valuesList)
@@ -482,7 +491,7 @@ namespace import
 									value = new Block.State.Value(val);
 								else
 								{
-									JsonObject curValue = val.ToObject<JsonObject>();
+									JsonObject curValue = (JsonObject)val;
 									value = new Block.State.Value(curValue["value"]);
 
 									if (curValue.ContainsKey("file") && blockPreviewMap.ContainsKey(curValue["file"]))
@@ -505,7 +514,7 @@ namespace import
 						for (var i = 0; i < 16; i++)
 							block.legacyDataPreview[i] = block.preview;
 					if (curBlock.ContainsKey("legacy_data"))
-						LoadBlockLegacyData(ref block, curBlock["legacy_data"].ToObject<JsonObject>(), 0, 1);
+						LoadBlockLegacyData(ref block, (JsonObject)curBlock["legacy_data"], 0, 1);
 
 					blockNameMap[block.name] = block;
 				}
@@ -530,13 +539,13 @@ namespace import
 				switch (pair.Key)
 				{
 					// Bitmasks
-					case "0x1":			LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 1, 1); break;
-					case "0x2":			LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 2, 2); break;
-					case "0x4":			LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 4, 4); break;
-					case "0x8":			LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 8, 8); break;
-					case "0x1+0x2":		LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 3, 1); break;
-					case "0x1+0x2+0x4": LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 7, 1); break;
-					case "0x4+0x8":		LoadBlockLegacyData(ref block, pair.Value.ToObject<JsonObject>(), 12, 4); break;
+					case "0x1":			LoadBlockLegacyData(ref block, (JsonObject)pair.Value, 1, 1); break;
+					case "0x2":			LoadBlockLegacyData(ref block, (JsonObject)pair.Value, 2, 2); break;
+					case "0x4":			LoadBlockLegacyData(ref block, (JsonObject)pair.Value, 4, 4); break;
+					case "0x8":			LoadBlockLegacyData(ref block, (JsonObject)pair.Value, 8, 8); break;
+					case "0x1+0x2":		LoadBlockLegacyData(ref block, (JsonObject)pair.Value, 3, 1); break;
+					case "0x1+0x2+0x4": LoadBlockLegacyData(ref block, (JsonObject)pair.Value, 7, 1); break;
+					case "0x4+0x8":		LoadBlockLegacyData(ref block, (JsonObject)pair.Value, 12, 4); break;
 
 					// Number (apply previous bitmask)
 					default:
@@ -584,11 +593,11 @@ namespace import
 			string json = File.ReadAllText(filename);
 			try
 			{
-				JsonObject root = JsonConvert.DeserializeObject<JsonObject>(json);
+				JsonObject root = (JsonObject)serializer.DeserializeObject(json);
 				foreach (JsonNameValuePair key in root)
 				{
 					string file = key.Key;
-					JsonObject obj = key.Value.ToObject<JsonObject>();
+					JsonObject obj = (JsonObject)key.Value;
 					Block.Preview preview = new Block.Preview(Color.Transparent, Color.Transparent);
 
 					// Top-down color
@@ -845,10 +854,12 @@ namespace import
 			string json = File.ReadAllText(filename);
 			try
 			{
-				JsonObject root = JsonConvert.DeserializeObject<JsonObject>(json);
+				JsonObject root = (JsonObject)serializer.DeserializeObject(json);
 				filterBlocksActive = root["active"];
 				filterBlocksInvert = root["invert"];
-				filterBlocks = root["blocks"].ToObject<List<string>>();
+				JsonList blocksList = new JsonList(root["blocks"]);
+				foreach (dynamic curBlock in blocksList)
+					filterBlocks.Add((string)curBlock);
 			}
 			catch (Exception e)
 			{
