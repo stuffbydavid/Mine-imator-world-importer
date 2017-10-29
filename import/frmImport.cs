@@ -67,7 +67,7 @@ namespace import
 
 		// Folders
 		public static string mcSaveFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\.minecraft\saves";
-		public static string currentFolder = Directory.GetCurrentDirectory();
+		public static string currentFolder = Application.StartupPath; //@"D:\OneDrive\Projects\Minecraft\Mine-imator\Source\datafiles\Data";
 		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.12.midata";
 		public static string miLangFile = currentFolder + @"\Languages\english.milanguage";
 		public static string miBlockPreviewFile = currentFolder + @"\blockpreview.midata";
@@ -166,6 +166,7 @@ namespace import
 			btnCancel.Text = GetText("cancel");
 			lblFilterInfo.Text = GetText("filtersalert");
 			UpdateSizeLabel();
+			UpdateFilterBlocks();
 
 			// Get worlds
 			if (!Directory.Exists(mcSaveFolder))
@@ -369,7 +370,12 @@ namespace import
 								if (teX < sx || teX > ex || teY < sy || teY > ey || teZ < sz || teZ > ez)
 									continue;
 
-								tileEntities.Add(comp);
+								// Subtract by start position in a copy
+								NBTCompound newComp = (NBTCompound)comp.Copy();
+								newComp.Add(TagType.INT, "x", teX - sx);
+								newComp.Add(TagType.INT, "z", teY - sy);
+								newComp.Add(TagType.INT, "y", teZ - sz);
+								tileEntities.Add(newComp);
 							}
 
 							chunk.tileEntitiesAdded = true;

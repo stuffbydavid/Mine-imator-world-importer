@@ -40,6 +40,11 @@ namespace import
 			this.type = type;
 			this.value = value;
 		}
+
+		public virtual NBTTag Copy()
+		{
+			return new NBTTag(type, value);
+		}
 	}
 
 	/// <summary>A NBT list</summary>
@@ -47,7 +52,7 @@ namespace import
 	{
 		public TagType listType;
 
-		public NBTList(TagType listType) : base(TagType.LIST, new List<dynamic>())
+		public NBTList(TagType listType) : base(TagType.LIST, new List<NBTTag>())
 		{
 			this.listType = listType;
 		}
@@ -65,6 +70,14 @@ namespace import
 		public dynamic Get(int index)
 		{
 			return value[index];
+		}
+
+		public override NBTTag Copy()
+		{
+			NBTList newList = new NBTList(listType);
+			foreach (NBTTag tag in value)
+				newList.value.Add(tag.Copy());
+			return newList;
 		}
 	}
 
@@ -91,6 +104,14 @@ namespace import
 				return null;
 
 			return value[name];
+		}
+
+		public override NBTTag Copy()
+		{
+			NBTCompound newComp = new NBTCompound();
+			foreach (KeyValuePair<string, NBTTag> key in value)
+				newComp.AddTag(key.Key, key.Value.Copy());
+			return newComp;
 		}
 	}
 

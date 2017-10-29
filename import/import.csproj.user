@@ -17,6 +17,7 @@
     <StartWorkingDirectory>D:\OneDrive\Projects\Minecraft\Mine-imator\Source\datafiles\</StartWorkingDirectory>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x86'">
-    <StartWorkingDirectory>D:\OneDrive\Projects\Minecraft\Mine-imator\Source\datafiles\Data\</StartWorkingDirectory>
+    <StartWorkingDirectory>
+    </StartWorkingDirectory>
   </PropertyGroup>
 </Project>
