@@ -102,6 +102,8 @@ namespace import
 
 		/// <summary>Writes a compound tag to the given NBT file</summary>
 		/// <param name="filename">Path to write to.</param>
+		/// <param name="rootName">Name of the root compound tag.</param>
+		/// <param name="root">The root compound tag.</param>
 		public void Save(string filename, string rootName, NBTCompound root)
 		{
 			outFilename = filename;
@@ -454,23 +456,12 @@ namespace import
 
 		public byte[] GZIPDecompress(byte[] bytes)
 		{
-			using (GZipStream stream = new GZipStream(new MemoryStream(bytes), CompressionMode.Decompress))
+			using (var ds = new GZipStream(new MemoryStream(bytes), CompressionMode.Decompress))
 			{
-				const int size = 4096;
-				byte[] buffer = new byte[size];
-				using (MemoryStream memory = new MemoryStream())
+				using (var ms = new MemoryStream())
 				{
-					int count = 0;
-					do
-					{
-						count = stream.Read(buffer, 0, size);
-						if (count > 0)
-						{
-							memory.Write(buffer, 0, count);
-						}
-					}
-					while (count > 0);
-					return memory.ToArray();
+					ds.CopyTo(ms);
+					return ms.ToArray();
 				}
 			}
 		}

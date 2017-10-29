@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.IO;
 using System.Windows.Forms;
 using System.Web.Script.Serialization;
@@ -14,10 +13,10 @@ namespace import
 
 	public partial class frmImport : Form
 	{
-		/// <summary>A type of Minecraft block</summary>
+		/// <summary>A type of Minecraft block.</summary>
 		public class Block
 		{
-			/// <summary>Determines how a block is previewed in the top-down or cross-section view</summary>
+			/// <summary>Determines how a block is previewed in the top-down or cross-section view.</summary>
 			public class Preview
 			{
 				public Color XYColor, XZColor;
@@ -29,10 +28,10 @@ namespace import
 				}
 			}
 
-			/// <summary>A specific block state</summary>
+			/// <summary>A specific block state.</summary>
 			public class State
 			{
-				/// <summary>A possible value of the block state</summary>
+				/// <summary>A possible value of the block state.</summary>
 				public class Value
 				{
 					public string name;
@@ -68,11 +67,11 @@ namespace import
 
 		// Folders
 		public static string mcSaveFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\.minecraft\saves";
-		public static string dataFolder = Directory.GetCurrentDirectory(); //@"D:\OneDrive\Projects\Minecraft\Mine-imator\Source\datafiles\Data";
-		public static string mcAssetsFile = dataFolder + @"\Minecraft\1.12.midata";
-		public static string miLangFile = dataFolder + @"\Languages\english.milanguage";
-		public static string miBlockPreviewFile = dataFolder + @"\blockpreview.midata";
-		public static string miBlockFilterFile = dataFolder + @"\blockfilter.midata";
+		public static string currentFolder = Directory.GetCurrentDirectory();
+		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.12.midata";
+		public static string miLangFile = currentFolder + @"\Languages\english.milanguage";
+		public static string miBlockPreviewFile = currentFolder + @"\blockpreview.midata";
+		public static string miBlockFilterFile = currentFolder + @"\blockfilter.midata";
 
 		// Language
 		public Dictionary<string, string> languageMap = new Dictionary<string, string>();
@@ -194,7 +193,6 @@ namespace import
 				Application.Exit();
 			}
 		}
-
 		private void LoadLanguageObject(string prefix, JsonObject root)
 		{
 			foreach (JsonNameValuePair key in root)
@@ -237,7 +235,7 @@ namespace import
 				{
 					for (int z = selectStart.Z; z <= selectEnd.Z; z++)
 					{
-						if (IsLegacyBlockNotAir(sx, y, z))
+						if (world.IsLegacyBlockNotAir(this, sx, y, z))
 						{
 							foundblock = true;
 							break;
@@ -256,7 +254,7 @@ namespace import
 				{
 					for (int z = selectStart.Z; z <= selectEnd.Z; z++)
 					{
-						if (IsLegacyBlockNotAir(ex, y, z))
+						if (world.IsLegacyBlockNotAir(this, ex, y, z))
 						{
 							foundblock = true;
 							break;
@@ -275,7 +273,7 @@ namespace import
 				{
 					for (int z = selectStart.Z; z <= selectEnd.Z; z++)
 					{
-						if (IsLegacyBlockNotAir(x, sy, z))
+						if (world.IsLegacyBlockNotAir(this, x, sy, z))
 						{
 							foundblock = true;
 							break;
@@ -294,7 +292,7 @@ namespace import
 				{
 					for (int z = selectStart.Z; z <= selectEnd.Z; z++)
 					{
-						if (IsLegacyBlockNotAir(x, ey, z))
+						if (world.IsLegacyBlockNotAir(this, x, ey, z))
 						{
 							foundblock = true;
 							break;
@@ -313,7 +311,7 @@ namespace import
 				{
 					for (int y = selectStart.Y; y <= selectEnd.Y; y++)
 					{
-						if (IsLegacyBlockNotAir(x, y, sz))
+						if (world.IsLegacyBlockNotAir(this, x, y, sz))
 						{
 							foundblock = true;
 							break;
@@ -332,7 +330,7 @@ namespace import
 				{
 					for (int y = selectStart.Y; y <= selectEnd.Y; y++)
 					{
-						if (IsLegacyBlockNotAir(x, y, ez))
+						if (world.IsLegacyBlockNotAir(this, x, y, ez))
 						{
 							foundblock = true;
 							break;
@@ -416,13 +414,9 @@ namespace import
 			}
 		}
 
-		private bool IsLegacyBlockNotAir(int x, int y, int z)
-		{
-			World.LegacyBlock block = world.GetLegacyBlock(x, y, z);
-			return (block != null && block.id > 0 && !IsLegacyBlockFiltered(block));
-		}
-
-		private bool IsLegacyBlockFiltered(World.LegacyBlock block)
+		/// <summary>Returns whether a block is filtered by the user.</summary>
+		/// <param name="block">The world block to check</param>
+		public bool IsLegacyBlockFiltered(World.LegacyBlock block)
 		{
 			if (filterBlocksActive && blockLegacyIdMap.ContainsKey(block.id) && filterBlocks.Contains(blockLegacyIdMap[block.id].name))
 				return !filterBlocksInvert;
@@ -451,6 +445,7 @@ namespace import
 		}
 
 		/// <summary>Loads the blocks from the Minecraft version file.</summary>
+		/// <param name="filename">The version file.</param>
 		public void LoadBlocks(string filename)
 		{
 			string json = File.ReadAllText(filename);
@@ -514,7 +509,7 @@ namespace import
 						for (var i = 0; i < 16; i++)
 							block.legacyDataPreview[i] = block.preview;
 					if (curBlock.ContainsKey("legacy_data"))
-						LoadBlockLegacyData(ref block, (JsonObject)curBlock["legacy_data"], 0, 1);
+						LoadBlocksLegacyData(ref block, (JsonObject)curBlock["legacy_data"], 0, 1);
 
 					blockNameMap[block.name] = block;
 				}
@@ -531,21 +526,20 @@ namespace import
 			blockLegacyIdMap[8] = blockLegacyIdMap[9];
 			blockLegacyIdMap[10] = blockLegacyIdMap[11];
 		}
-
-		private void LoadBlockLegacyData(ref Block block, JsonObject obj, byte bitMask, byte bitBase)
+		private void LoadBlocksLegacyData(ref Block block, JsonObject obj, byte bitMask, byte bitBase)
 		{
 			foreach (JsonNameValuePair pair in obj)
 			{
 				switch (pair.Key)
 				{
 					// Bitmasks
-					case "0x1":			LoadBlockLegacyData(ref block, (JsonObject)pair.Value, 1, 1); break;
-					case "0x2":			LoadBlockLegacyData(ref block, (JsonObject)pair.Value, 2, 2); break;
-					case "0x4":			LoadBlockLegacyData(ref block, (JsonObject)pair.Value, 4, 4); break;
-					case "0x8":			LoadBlockLegacyData(ref block, (JsonObject)pair.Value, 8, 8); break;
-					case "0x1+0x2":		LoadBlockLegacyData(ref block, (JsonObject)pair.Value, 3, 1); break;
-					case "0x1+0x2+0x4": LoadBlockLegacyData(ref block, (JsonObject)pair.Value, 7, 1); break;
-					case "0x4+0x8":		LoadBlockLegacyData(ref block, (JsonObject)pair.Value, 12, 4); break;
+					case "0x1":			LoadBlocksLegacyData(ref block, (JsonObject)pair.Value, 1, 1); break;
+					case "0x2":			LoadBlocksLegacyData(ref block, (JsonObject)pair.Value, 2, 2); break;
+					case "0x4":			LoadBlocksLegacyData(ref block, (JsonObject)pair.Value, 4, 4); break;
+					case "0x8":			LoadBlocksLegacyData(ref block, (JsonObject)pair.Value, 8, 8); break;
+					case "0x1+0x2":		LoadBlocksLegacyData(ref block, (JsonObject)pair.Value, 3, 1); break;
+					case "0x1+0x2+0x4": LoadBlocksLegacyData(ref block, (JsonObject)pair.Value, 7, 1); break;
+					case "0x4+0x8":		LoadBlocksLegacyData(ref block, (JsonObject)pair.Value, 12, 4); break;
 
 					// Number (apply previous bitmask)
 					default:
@@ -849,6 +843,7 @@ namespace import
 		}
 
 		/// <summary>Loads which blocks to filter out.</summary>
+		/// <param name="filename">The blockfilter.midata file.</param>
 		public void LoadFilterBlocks(string filename)
 		{
 			string json = File.ReadAllText(filename);
@@ -991,7 +986,7 @@ namespace import
 			if (XYImageZoom == 1)
 				pboxWorldXY.Image = new Bitmap(XYMapBitmap);
 			else
-				pboxWorldXY.Image = ResizeBitmap(XYMapBitmap, (int)(XYBlocksWidth * XYImageZoom), (int)(XYBlocksHeight * XYImageZoom));
+				pboxWorldXY.Image = Util.ResizeBitmap(XYMapBitmap, (int)(XYBlocksWidth * XYImageZoom), (int)(XYBlocksHeight * XYImageZoom));
 
 			using (Graphics g = Graphics.FromImage(pboxWorldXY.Image))
 			{
@@ -1000,6 +995,80 @@ namespace import
 				g.DrawImage(XYSelectBitmap, 0, 0);
 			}
 		}
+
+		/// <summary>Updates the bitmap of the XZ map.</summary>
+		private void UpdateXZMap()
+		{
+			if (world.filename == "")
+				return;
+
+			int screenwid = pboxWorldXZ.Width, screenhei = pboxWorldXZ.Height;
+			XZBlocksWidth = (int)(screenwid / XZImageZoom) + 1;
+			XZBlocksHeight = (int)(screenhei / XZImageZoom) + 1;
+			XZStart = new Point((int)Math.Floor(XZImageMidPos.X - (screenwid / XZImageZoom) / 2), 0);
+			Bitmap bmp = new Bitmap(XZBlocksWidth, 256);
+
+			//Find chunks and draw them
+			using (Graphics g = Graphics.FromImage(bmp))
+			{
+				for (int dy = selectEnd.Y - 48; dy <= selectEnd.Y; dy += 16)
+				{
+					for (int dx = 0; dx < XZBlocksWidth + 16; dx += 16)
+					{
+						int cx = XZStart.X + dx;
+						Chunk chunk = world.GetChunk(cx, dy);
+						if (chunk != null)
+						{
+							Bitmap img = GetChunkXZImage(chunk);
+							g.DrawImage(img, chunk.X * 16 - XZStart.X, 256 - img.Height);
+						}
+					}
+				}
+			}
+
+			XZMapBitmap.Dispose();
+			XZMapBitmap = bmp;
+			UpdateXZSel();
+		}
+
+		/// <summary>Updates the bitmap for the XZ selection box.</summary>
+		private void UpdateXZSel()
+		{
+			int sx = Math.Min(selectStart.X, selectEnd.X), sz = Math.Min(selectStart.Z, selectEnd.Z);
+			int ex = Math.Max(selectStart.X, selectEnd.X), ez = Math.Max(selectStart.Z, selectEnd.Z);
+			XZSelectStartDraw = new Point((int)((sx - XZStart.X) * XZImageZoom - XZImageZoom / 2), pboxWorldXZ.Size.Height - Math.Max(1, (int)(ez * XZImageZoom + XZImageZoom / 2)));
+			XZSelectEndDraw = new Point((int)((ex - XZStart.X) * XZImageZoom + XZImageZoom / 2), pboxWorldXZ.Size.Height - Math.Max(1, (int)(sz * XZImageZoom - XZImageZoom / 2)));
+			XZSelectBitmap.Dispose();
+			XZSelectBitmap = new Bitmap(pboxWorldXZ.Width, pboxWorldXZ.Height);
+			using (Graphics g = Graphics.FromImage(XZSelectBitmap))
+			using (Pen p = new Pen(Color.White, 2))
+				g.DrawRectangle(p, XZSelectStartDraw.X, XZSelectStartDraw.Y, XZSelectEndDraw.X - XZSelectStartDraw.X, XZSelectEndDraw.Y - XZSelectStartDraw.Y);
+			UpdateXZPicBox();
+		}
+
+		/// <summary>Draws the map, selection box, player and spawn location to the XZ picture box.</summary>
+		private void UpdateXZPicBox()
+		{
+			if (pboxWorldXZ.Image != null)
+				pboxWorldXZ.Image.Dispose();
+
+			pboxWorldXZ.Image = new Bitmap(pboxWorldXZ.Width, pboxWorldXZ.Height);
+
+			using (Graphics g = Graphics.FromImage(pboxWorldXZ.Image))
+			{
+				Bitmap map;
+				if (XZImageZoom == 1)
+					map = XZMapBitmap;
+				else
+					map = Util.ResizeBitmap(XZMapBitmap, (int)(XZMapBitmap.Width * XZImageZoom), (int)(256 * XZImageZoom));
+				g.DrawImage(map, 0, pboxWorldXZ.Height + XZImageZoom - map.Height);
+				g.DrawImage(XZSelectBitmap, 0, 0);
+				g.DrawImage(spawnImage, (int)((world.spawnPos.X - XZStart.X) * XZImageZoom) - 8, (int)(pboxWorldXZ.Height - world.spawnPos.Z * XZImageZoom) - 8);
+				g.DrawImage(playerImage, (int)(((int)world.playerPos.X - XZStart.X) * XZImageZoom) - 8, (int)(pboxWorldXZ.Height - world.playerPos.Z * XZImageZoom) - 8);
+			}
+		}
+
+		// Picture box events
 
 		private void OverXY(object sender, MouseEventArgs e)
 		{
@@ -1010,28 +1079,28 @@ namespace import
 			if (e.Button == MouseButtons.None)
 			{
 				XYDragSelect = 0;
-				if (mouse_rectangle(e.Location, XYSelectStartDraw.X - 4, XYSelectStartDraw.Y, XYSelectStartDraw.X + 4, XYSelectEndDraw.Y))
+				if (Util.MouseRectangle(e.Location, XYSelectStartDraw.X - 4, XYSelectStartDraw.Y, XYSelectStartDraw.X + 4, XYSelectEndDraw.Y))
 					XYDragSelect = 8; // L
 
-				if (mouse_rectangle(e.Location, XYSelectEndDraw.X - 4, XYSelectStartDraw.Y, XYSelectEndDraw.X + 4, XYSelectEndDraw.Y))
+				if (Util.MouseRectangle(e.Location, XYSelectEndDraw.X - 4, XYSelectStartDraw.Y, XYSelectEndDraw.X + 4, XYSelectEndDraw.Y))
 					XYDragSelect = 4; // R
 
-				if (mouse_rectangle(e.Location, XYSelectStartDraw.X, XYSelectStartDraw.Y - 4, XYSelectEndDraw.X, XYSelectStartDraw.Y + 4))
+				if (Util.MouseRectangle(e.Location, XYSelectStartDraw.X, XYSelectStartDraw.Y - 4, XYSelectEndDraw.X, XYSelectStartDraw.Y + 4))
 					XYDragSelect = 2; // U
 
-				if (mouse_rectangle(e.Location, XYSelectStartDraw.X, XYSelectEndDraw.Y - 4, XYSelectEndDraw.X, XYSelectEndDraw.Y + 4))
+				if (Util.MouseRectangle(e.Location, XYSelectStartDraw.X, XYSelectEndDraw.Y - 4, XYSelectEndDraw.X, XYSelectEndDraw.Y + 4))
 					XYDragSelect = 6; // D
 
-				if (mouse_rectangle(e.Location, XYSelectStartDraw.X - 4, XYSelectStartDraw.Y - 4, XYSelectStartDraw.X + 4, XYSelectStartDraw.Y + 4))
+				if (Util.MouseRectangle(e.Location, XYSelectStartDraw.X - 4, XYSelectStartDraw.Y - 4, XYSelectStartDraw.X + 4, XYSelectStartDraw.Y + 4))
 					XYDragSelect = 1; // LU
 
-				if (mouse_rectangle(e.Location, XYSelectEndDraw.X - 4, XYSelectStartDraw.Y - 4, XYSelectEndDraw.X + 4, XYSelectStartDraw.Y + 4))
+				if (Util.MouseRectangle(e.Location, XYSelectEndDraw.X - 4, XYSelectStartDraw.Y - 4, XYSelectEndDraw.X + 4, XYSelectStartDraw.Y + 4))
 					XYDragSelect = 3; // RU
 
-				if (mouse_rectangle(e.Location, XYSelectStartDraw.X - 4, XYSelectEndDraw.Y - 4, XYSelectStartDraw.X + 4, XYSelectEndDraw.Y + 4))
+				if (Util.MouseRectangle(e.Location, XYSelectStartDraw.X - 4, XYSelectEndDraw.Y - 4, XYSelectStartDraw.X + 4, XYSelectEndDraw.Y + 4))
 					XYDragSelect = 7; // LD
 
-				if (mouse_rectangle(e.Location, XYSelectEndDraw.X - 4, XYSelectEndDraw.Y - 4, XYSelectEndDraw.X + 4, XYSelectEndDraw.Y + 4))
+				if (Util.MouseRectangle(e.Location, XYSelectEndDraw.X - 4, XYSelectEndDraw.Y - 4, XYSelectEndDraw.X + 4, XYSelectEndDraw.Y + 4))
 					XYDragSelect = 5; // RD
 			}
 			else
@@ -1188,78 +1257,6 @@ namespace import
 			UpdateXYMap(0, 0);
 		}
 
-		/// <summary>Updates the bitmap of the XZ map.</summary>
-		private void UpdateXZMap()
-		{
-			if (world.filename == "")
-				return;
-
-			int screenwid = pboxWorldXZ.Width, screenhei = pboxWorldXZ.Height;
-			XZBlocksWidth = (int)(screenwid / XZImageZoom) + 1;
-			XZBlocksHeight = (int)(screenhei / XZImageZoom) + 1;
-			XZStart = new Point((int)Math.Floor(XZImageMidPos.X - (screenwid / XZImageZoom) / 2), 0);
-			Bitmap bmp = new Bitmap(XZBlocksWidth, 256);
-
-			//Find chunks and draw them
-			using (Graphics g = Graphics.FromImage(bmp))
-			{
-				for (int dy = selectEnd.Y - 48; dy <= selectEnd.Y; dy += 16)
-				{
-					for (int dx = 0; dx < XZBlocksWidth + 16; dx += 16)
-					{
-						int cx = XZStart.X + dx;
-						Chunk chunk = world.GetChunk(cx, dy);
-						if (chunk != null)
-						{
-							Bitmap img = GetChunkXZImage(chunk);
-							g.DrawImage(img, chunk.X * 16 - XZStart.X, 256 - img.Height);
-						}
-					}
-				}
-			}
-
-			XZMapBitmap.Dispose();
-			XZMapBitmap = bmp;
-			UpdateXZSel();
-		}
-
-		/// <summary>Updates the bitmap for the XZ selection box.</summary>
-		private void UpdateXZSel()
-		{
-			int sx = Math.Min(selectStart.X, selectEnd.X), sz = Math.Min(selectStart.Z, selectEnd.Z);
-			int ex = Math.Max(selectStart.X, selectEnd.X), ez = Math.Max(selectStart.Z, selectEnd.Z);
-			XZSelectStartDraw = new Point((int)((sx - XZStart.X) * XZImageZoom - XZImageZoom / 2), pboxWorldXZ.Size.Height - Math.Max(1, (int)(ez * XZImageZoom + XZImageZoom / 2)));
-			XZSelectEndDraw = new Point((int)((ex - XZStart.X) * XZImageZoom + XZImageZoom / 2), pboxWorldXZ.Size.Height - Math.Max(1, (int)(sz * XZImageZoom - XZImageZoom / 2)));
-			XZSelectBitmap.Dispose();
-			XZSelectBitmap = new Bitmap(pboxWorldXZ.Width, pboxWorldXZ.Height);
-			using (Graphics g = Graphics.FromImage(XZSelectBitmap))
-			using (Pen p = new Pen(Color.White, 2))
-				g.DrawRectangle(p, XZSelectStartDraw.X, XZSelectStartDraw.Y, XZSelectEndDraw.X - XZSelectStartDraw.X, XZSelectEndDraw.Y - XZSelectStartDraw.Y);
-			UpdateXZPicBox();
-		}
-
-		/// <summary>Draws the map, selection box, player and spawn location to the XZ picture box.</summary>
-		private void UpdateXZPicBox()
-		{
-			if (pboxWorldXZ.Image != null)
-				pboxWorldXZ.Image.Dispose();
-
-			pboxWorldXZ.Image = new Bitmap(pboxWorldXZ.Width, pboxWorldXZ.Height);
-
-			using (Graphics g = Graphics.FromImage(pboxWorldXZ.Image))
-			{
-				Bitmap map;
-				if (XZImageZoom == 1)
-					map = XZMapBitmap;
-				else
-					map = ResizeBitmap(XZMapBitmap, (int)(XZMapBitmap.Width * XZImageZoom), (int)(256 * XZImageZoom));
-				g.DrawImage(map, 0, pboxWorldXZ.Height + XZImageZoom - map.Height);
-				g.DrawImage(XZSelectBitmap, 0, 0);
-				g.DrawImage(spawnImage, (int)((world.spawnPos.X - XZStart.X) * XZImageZoom) - 8, (int)(pboxWorldXZ.Height - world.spawnPos.Z * XZImageZoom) - 8);
-				g.DrawImage(playerImage, (int)(((int)world.playerPos.X - XZStart.X) * XZImageZoom) - 8, (int)(pboxWorldXZ.Height - world.playerPos.Z * XZImageZoom) - 8);
-			}
-		}
-
 		private void OverXZ(object sender, MouseEventArgs e)
 		{
 			if (world.filename == "")
@@ -1269,28 +1266,28 @@ namespace import
 			if (e.Button == MouseButtons.None)
 			{
 				XZDragSelect = 0;
-				if (mouse_rectangle(e.Location, XZSelectStartDraw.X - 4, XZSelectStartDraw.Y, XZSelectStartDraw.X + 4, XZSelectEndDraw.Y))
+				if (Util.MouseRectangle(e.Location, XZSelectStartDraw.X - 4, XZSelectStartDraw.Y, XZSelectStartDraw.X + 4, XZSelectEndDraw.Y))
 					XZDragSelect = 8; // L
 
-				if (mouse_rectangle(e.Location, XZSelectEndDraw.X - 4, XZSelectStartDraw.Y, XZSelectEndDraw.X + 4, XZSelectEndDraw.Y))
+				if (Util.MouseRectangle(e.Location, XZSelectEndDraw.X - 4, XZSelectStartDraw.Y, XZSelectEndDraw.X + 4, XZSelectEndDraw.Y))
 					XZDragSelect = 4; // R
 
-				if (mouse_rectangle(e.Location, XZSelectStartDraw.X, XZSelectStartDraw.Y - 4, XZSelectEndDraw.X, XZSelectStartDraw.Y + 4))
+				if (Util.MouseRectangle(e.Location, XZSelectStartDraw.X, XZSelectStartDraw.Y - 4, XZSelectEndDraw.X, XZSelectStartDraw.Y + 4))
 					XZDragSelect = 2; // U
 
-				if (mouse_rectangle(e.Location, XZSelectStartDraw.X, XZSelectEndDraw.Y - 4, XZSelectEndDraw.X, XZSelectEndDraw.Y + 4))
+				if (Util.MouseRectangle(e.Location, XZSelectStartDraw.X, XZSelectEndDraw.Y - 4, XZSelectEndDraw.X, XZSelectEndDraw.Y + 4))
 					XZDragSelect = 6; // D
 
-				if (mouse_rectangle(e.Location, XZSelectStartDraw.X - 4, XZSelectStartDraw.Y - 4, XZSelectStartDraw.X + 4, XZSelectStartDraw.Y + 4))
+				if (Util.MouseRectangle(e.Location, XZSelectStartDraw.X - 4, XZSelectStartDraw.Y - 4, XZSelectStartDraw.X + 4, XZSelectStartDraw.Y + 4))
 					XZDragSelect = 1; // LU
 
-				if (mouse_rectangle(e.Location, XZSelectEndDraw.X - 4, XZSelectStartDraw.Y - 4, XZSelectEndDraw.X + 4, XZSelectStartDraw.Y + 4))
+				if (Util.MouseRectangle(e.Location, XZSelectEndDraw.X - 4, XZSelectStartDraw.Y - 4, XZSelectEndDraw.X + 4, XZSelectStartDraw.Y + 4))
 					XZDragSelect = 3; // RU
 
-				if (mouse_rectangle(e.Location, XZSelectStartDraw.X - 4, XZSelectEndDraw.Y - 4, XZSelectStartDraw.X + 4, XZSelectEndDraw.Y + 4))
+				if (Util.MouseRectangle(e.Location, XZSelectStartDraw.X - 4, XZSelectEndDraw.Y - 4, XZSelectStartDraw.X + 4, XZSelectEndDraw.Y + 4))
 					XZDragSelect = 7; // LD
 
-				if (mouse_rectangle(e.Location, XZSelectEndDraw.X - 4, XZSelectEndDraw.Y - 4, XZSelectEndDraw.X + 4, XZSelectEndDraw.Y + 4))
+				if (Util.MouseRectangle(e.Location, XZSelectEndDraw.X - 4, XZSelectEndDraw.Y - 4, XZSelectEndDraw.X + 4, XZSelectEndDraw.Y + 4))
 					XZDragSelect = 5; // RD
 			}
 			else
@@ -1456,6 +1453,8 @@ namespace import
 			UpdateXZMap();
 		}
 
+		// Button events
+
 		private void btnDone_Click(object sender, EventArgs e)
 		{
 			if (savefile != "")
@@ -1507,22 +1506,6 @@ namespace import
 		private void btnCancel_Click(object sender, EventArgs e)
 		{
 			Application.Exit();
-		}
-
-		private Bitmap ResizeBitmap(Bitmap sourceBMP, int width, int height)
-		{
-			Bitmap result = new Bitmap(width, height);
-			using (Graphics g = Graphics.FromImage(result))
-			{
-				g.InterpolationMode = InterpolationMode.NearestNeighbor;
-				g.DrawImage(sourceBMP, 0, 0, width, height);
-			}
-			return result;
-		}
-
-		private bool mouse_rectangle(Point m, int x1, int y1, int x2, int y2)
-		{
-			return (m.X >= x1 && m.Y >= y1 && m.X < x2 && m.Y < y2);
 		}
 	}
 }

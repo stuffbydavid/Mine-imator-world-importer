@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Windows.Forms;
 using System.IO;
+using System.Drawing;
 using System.Collections.Generic;
 using System.Web.Script.Serialization;
 
@@ -42,6 +43,7 @@ namespace import
 			lblBlocksRemove.Text = import.GetText("filtersblocksremove");
 			rbtnRemove.Text = import.GetText("filtersremove");
 			rbtnKeep.Text = import.GetText("filterskeep");
+			rbtnKeep.Location = new Point(rbtnRemove.Location.X + rbtnRemove.Width + 20, rbtnKeep.Location.Y);
 			btnAdd.Text = import.GetText("filtersadd");
 			btnRemove.Text = import.GetText("filtersremove");
 			btnOk.Text = import.GetText("filtersok");

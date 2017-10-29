@@ -9,7 +9,7 @@ namespace import
 	/// <summary>Represents a grid of 16x16x256 blocks.</summary>
 	public class Chunk
 	{
-		/// <summary>A section </summary>
+		/// <summary>A section of 16x16x16 blocks.</summary>
 		public class Section
 		{
 			public byte[,,] blockLegacyIds = new byte[16, 16, 16];

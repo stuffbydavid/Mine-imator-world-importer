@@ -161,6 +161,21 @@ namespace import
 			return new LegacyBlock(sec.blockLegacyIds[sx, sy, sz], sec.blockLegacyDatas[sx, sy, sz]);
 		}
 
+		/// <summary>Returns whether a block at the given position in the world is not air.</summary>
+		/// <param name="main">Reference to the main form.</param>
+		/// <param name="x">x value to check.</param>
+		/// <param name="y">y value to check.</param>
+		/// <param name="z">z value to check.</param>
+		public bool IsLegacyBlockNotAir(frmImport main, int x, int y, int z)
+		{
+			World.LegacyBlock block = GetLegacyBlock(x, y, z);
+			return (block != null && block.id > 0 && !main.IsLegacyBlockFiltered(block));
+		}
+
+		/// <summary>Returns the block ID and data found at x, y, z in the world.</summary>
+		/// <param name="x">x value to check.</param>
+		/// <param name="y">y value to check.</param>
+		/// <param name="z">z value to check.</param>
 		public LegacyBlock GetLegacyBlock(int x, int y, int z)
 		{
 			Chunk chunk = GetChunk(x, y);

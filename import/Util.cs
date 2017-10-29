@@ -1,6 +1,7 @@
 ﻿using System;
 using System.IO;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Globalization;
 
 namespace import
@@ -71,6 +72,23 @@ namespace import
 		{
 			Color col = Color.FromArgb(Int32.Parse(hex.Replace("#", ""), NumberStyles.HexNumber));
 			return Color.FromArgb(alpha, col.R, col.G, col.B);
+		}
+
+
+		public static Bitmap ResizeBitmap(Bitmap sourceBMP, int width, int height)
+		{
+			Bitmap result = new Bitmap(width, height);
+			using (Graphics g = Graphics.FromImage(result))
+			{
+				g.InterpolationMode = InterpolationMode.NearestNeighbor;
+				g.DrawImage(sourceBMP, 0, 0, width, height);
+			}
+			return result;
+		}
+
+		public static bool MouseRectangle(Point m, int x1, int y1, int x2, int y2)
+		{
+			return (m.X >= x1 && m.Y >= y1 && m.X < x2 && m.Y < y2);
 		}
 	}
 }

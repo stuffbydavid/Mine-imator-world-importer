@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("importfromworld")]
-[assembly: AssemblyDescription("Mine-imator Import from world tool")]
+[assembly: AssemblyTitle("Import scenery from world")]
+[assembly: AssemblyDescription("Mine-imator Import scenery from world")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("Mine-imator Import from world tool")]
-[assembly: AssemblyCopyright("Copyright © David Norgren 2013")]
+[assembly: AssemblyCompany("Stuff by David")]
+[assembly: AssemblyProduct("Mine-imator Import scenery from world")]
+[assembly: AssemblyCopyright("")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
