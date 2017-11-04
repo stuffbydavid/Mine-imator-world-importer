@@ -65,9 +65,25 @@ namespace import
 			}
 		}
 
+		/// <summary>A choise in the world combobox.</summary>
+		public class WorldOption
+		{
+			public string filename, name;
+			public WorldOption(string filename, string name)
+			{
+				this.filename = filename;
+				this.name = name;
+			}
+
+			public override string ToString()
+			{
+				return name;
+			}
+		}
+
 		// Folders
 		public static string mcSaveFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\.minecraft\saves";
-		public static string currentFolder = Application.StartupPath; //@"D:\OneDrive\Projects\Minecraft\Mine-imator\Source\datafiles\Data";
+		public static string currentFolder = Application.StartupPath; //@"D:\OneDrive\Projects\Minecraft\Mine-imator\Source\datafiles\Data"; //
 		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.12.midata";
 		public static string miLangFile = currentFolder + @"\Languages\english.milanguage";
 		public static string miBlockPreviewFile = currentFolder + @"\blockpreview.midata";
@@ -158,6 +174,7 @@ namespace import
 			lblTopDownView.Text = GetText("topdownview");
 			lblCrossSectionView.Text = GetText("crosssectionview");
 			lblWorld.Text = GetText("world") + ":";
+			btnBrowse.Text = GetText("browse");
 			rbtOver.Text = GetText("overworld");
 			rbtNether.Text = GetText("nether");
 			rbtEnd.Text = GetText("end");
@@ -165,6 +182,9 @@ namespace import
 			btnFilters.Text = GetText("filters");
 			btnCancel.Text = GetText("cancel");
 			lblFilterInfo.Text = GetText("filtersalert");
+
+			rbtNether.Location = new Point(rbtOver.Location.X + rbtOver.Width + 5, rbtOver.Location.Y);
+			rbtEnd.Location = new Point(rbtNether.Location.X + rbtNether.Width + 5, rbtOver.Location.Y);
 			UpdateSizeLabel();
 			UpdateFilterBlocks();
 
@@ -173,10 +193,8 @@ namespace import
 				return;
 			DirectoryInfo dir = new DirectoryInfo(mcSaveFolder);
 			foreach (DirectoryInfo d in dir.GetDirectories())
-			{
 				if (File.Exists(d.FullName + @"\level.dat"))
-					cbxSaves.Items.Add(d.Name);
-			}
+					cbxSaves.Items.Add(new WorldOption(d.FullName + @"\level.dat", d.Name));
 		}
 
 		/// <summary>Loads the .milanguage file containing the text of the program.</summary>
@@ -629,13 +647,8 @@ namespace import
 		}
 
 		/// <summary>Loads the world from the combobox and resets the view.</summary>
-		private void LoadWorld()
+		private void LoadWorld(string filename)
 		{
-			if (cbxSaves.SelectedIndex == -1)
-				return;
-
-			string worldfolder = mcSaveFolder + @"\" + cbxSaves.Items[cbxSaves.SelectedIndex];
-
 			Dimension dim;
 			if (rbtNether.Checked)
 				dim = Dimension.NETHER;
@@ -644,10 +657,10 @@ namespace import
 			else
 				dim = Dimension.OVERWORLD;
 
-			if (!world.CanLoad(worldfolder, dim))
+			if (!world.CanLoad(filename, dim))
 				return;
 
-			if (world.Load(worldfolder, dim))
+			if (world.Load(filename, dim))
 			{
 				XYImageMidPos = new Point((int)world.playerPos.X, (int)world.playerPos.Y);
 				XYImageZoom = 8;
@@ -1242,6 +1255,18 @@ namespace import
 			UpdateSizeLabel();
 		}
 
+		private void btnBrowse_Click(object sender, EventArgs e)
+		{
+			OpenFileDialog open = new OpenFileDialog();
+			open.InitialDirectory = mcSaveFolder;
+			open.Title = GetText("browsecaption");
+			open.Filter = GetText("browseworlds") + "|level.dat";
+			DialogResult res = open.ShowDialog();
+
+			if (res == DialogResult.OK && File.Exists(open.FileName))
+				LoadWorld(open.FileName);
+		}
+
 		private void ZoomXY(object sender, MouseEventArgs e)
 		{
 			if (world.filename == "")
@@ -1482,24 +1507,27 @@ namespace import
 		private void rbtOver_CheckedChanged(object sender, EventArgs e)
 		{
 			if (rbtOver.Checked)
-				LoadWorld();
+				LoadWorld(world.filename);
 		}
 
 		private void rbtNether_CheckedChanged(object sender, EventArgs e)
 		{
 			if (rbtNether.Checked)
-				LoadWorld();
+				LoadWorld(world.filename);
 		}
 
 		private void rbtEnd_CheckedChanged(object sender, EventArgs e)
 		{
 			if (rbtEnd.Checked)
-				LoadWorld();
+				LoadWorld(world.filename);
 		}
 
 		private void cbxSaves_SelectedIndexChanged(object sender, EventArgs e)
 		{
-			LoadWorld();
+			if (cbxSaves.SelectedIndex == -1)
+				return;
+
+			LoadWorld(((WorldOption)cbxSaves.Items[cbxSaves.SelectedIndex]).filename);
 		}
 
 		private void btnAdvanced_Click(object sender, EventArgs e)

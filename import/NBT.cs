@@ -314,6 +314,10 @@ namespace import
 			NBTCompound root = new NBTCompound();
 			TagType tagType = (TagType)ReadByte();
 			string tagName = ReadString();
+
+			if (tagType != TagType.COMPOUND)
+				throw new Exception("Root is not a compound tag");
+
 			return ReadTAGCompound();
 		}
 

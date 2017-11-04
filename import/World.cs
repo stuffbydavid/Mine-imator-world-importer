@@ -48,7 +48,7 @@ namespace import
 
 			// Read level.dat
 			NBTReader nbt = new NBTReader();
-			NBTCompound nbtRoot = nbt.Open(File.ReadAllBytes(filename + @"\level.dat"), DataFormat.GZIP);
+			NBTCompound nbtRoot = nbt.Open(File.ReadAllBytes(filename), DataFormat.GZIP);
 			NBTCompound nbtData = (NBTCompound)nbtRoot.Get("Data");
 
 			// Player position
@@ -63,12 +63,13 @@ namespace import
 			spawnPos.Z = nbtData.Get("SpawnY").value;
 
 			// Get regions
+			string regionFolder = new FileInfo(filename).DirectoryName;
 			if (dim == Dimension.OVERWORLD)
-				filename += @"\region";
+				regionFolder += @"\region";
 			else
-				filename += @"\DIM" + (int)dim + @"\region";
+				regionFolder += @"\DIM" + (int)dim + @"\region";
 
-			foreach (FileInfo reg in new DirectoryInfo(filename).GetFiles("*.mca"))
+			foreach (FileInfo reg in new DirectoryInfo(regionFolder).GetFiles("*.mca"))
 			{
 				int rx = Convert.ToInt32(reg.Name.Split('.')[1]);
 				int ry = Convert.ToInt32(reg.Name.Split('.')[2]);
@@ -95,19 +96,36 @@ namespace import
 		}
 
 		/// <summary> Checks whether the given world and dimension can be loaded.</summary>
-		/// <param name="folder">World folder, usually found in the .saves folder in the Minecraft directory.</param>
+		/// <param name="filename">level.dat file to load.</param>
 		/// <param name="dim">Dimension to load.</param>
-		public bool CanLoad(string folder, Dimension dim)
+		public bool CanLoad(string filename, Dimension dim)
 		{
-			if (!File.Exists(folder + @"\level.dat"))
+			if (!File.Exists(filename))
 				return false;
 
-			if (dim == Dimension.OVERWORLD)
-				folder += @"\region";
-			else
-				folder += @"\DIM" + (int)dim + @"\region";
+			// Look if level.dat is valid NBT
+			try
+			{
+				NBTReader nbt = new NBTReader();
+				NBTCompound nbtRoot = nbt.Open(File.ReadAllBytes(filename), DataFormat.GZIP);
+			}
+			catch (Exception e)
+			{
+				MessageBox.Show(((frmImport)Application.OpenForms["frmImport"]).GetText("worldunsupported"));
+				return false;
+			}
 
-			return Directory.Exists(folder);
+			// Look if dimension exists
+			string regionFolder = new FileInfo(filename).DirectoryName;
+			if (dim == Dimension.OVERWORLD)
+				regionFolder += @"\region";
+			else
+				regionFolder += @"\DIM" + (int)dim + @"\region";
+
+			if (!Directory.Exists(regionFolder))
+				return false;
+
+			return true;
 		}
 
 		/// <summary>Returns the region that contains block x, y in the world.</summary>
