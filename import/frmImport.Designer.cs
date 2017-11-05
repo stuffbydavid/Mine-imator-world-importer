@@ -90,7 +90,7 @@
 			this.btnDone.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.btnDone.Enabled = false;
 			this.btnDone.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.btnDone.Location = new System.Drawing.Point(0, 487);
+			this.btnDone.Location = new System.Drawing.Point(0, 590);
 			this.btnDone.Name = "btnDone";
 			this.btnDone.Size = new System.Drawing.Size(179, 65);
 			this.btnDone.TabIndex = 3;
@@ -126,7 +126,7 @@
 			this.splitContainer1.Panel2.Controls.Add(this.lblWorld);
 			this.splitContainer1.Panel2.Controls.Add(this.panYZ);
 			this.splitContainer1.Panel2.Controls.Add(this.cbxSaves);
-			this.splitContainer1.Size = new System.Drawing.Size(1092, 557);
+			this.splitContainer1.Size = new System.Drawing.Size(1092, 660);
 			this.splitContainer1.SplitterDistance = 692;
 			this.splitContainer1.TabIndex = 6;
 			// 
@@ -149,7 +149,7 @@
 			this.panXY.Controls.Add(this.pboxWorldXY);
 			this.panXY.Location = new System.Drawing.Point(3, 17);
 			this.panXY.Name = "panXY";
-			this.panXY.Size = new System.Drawing.Size(690, 537);
+			this.panXY.Size = new System.Drawing.Size(690, 640);
 			this.panXY.TabIndex = 0;
 			// 
 			// pboxWorldXY
@@ -160,7 +160,7 @@
 			this.pboxWorldXY.BackColor = System.Drawing.Color.Transparent;
 			this.pboxWorldXY.Location = new System.Drawing.Point(0, 0);
 			this.pboxWorldXY.Name = "pboxWorldXY";
-			this.pboxWorldXY.Size = new System.Drawing.Size(686, 533);
+			this.pboxWorldXY.Size = new System.Drawing.Size(686, 636);
 			this.pboxWorldXY.TabIndex = 0;
 			this.pboxWorldXY.TabStop = false;
 			this.pboxWorldXY.SizeChanged += new System.EventHandler(this.ResizeXY);
@@ -185,7 +185,7 @@
 			this.lblFilterInfo.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.lblFilterInfo.AutoSize = true;
 			this.lblFilterInfo.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.lblFilterInfo.Location = new System.Drawing.Point(183, 511);
+			this.lblFilterInfo.Location = new System.Drawing.Point(183, 614);
 			this.lblFilterInfo.Name = "lblFilterInfo";
 			this.lblFilterInfo.Size = new System.Drawing.Size(63, 13);
 			this.lblFilterInfo.TabIndex = 12;
@@ -203,7 +203,7 @@
 			// btnFilters
 			// 
 			this.btnFilters.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.btnFilters.Location = new System.Drawing.Point(186, 528);
+			this.btnFilters.Location = new System.Drawing.Point(186, 631);
 			this.btnFilters.Name = "btnFilters";
 			this.btnFilters.Size = new System.Drawing.Size(99, 23);
 			this.btnFilters.TabIndex = 10;
@@ -215,7 +215,7 @@
 			// 
 			this.btnCancel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
 			this.btnCancel.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.btnCancel.Location = new System.Drawing.Point(291, 528);
+			this.btnCancel.Location = new System.Drawing.Point(291, 631);
 			this.btnCancel.Name = "btnCancel";
 			this.btnCancel.Size = new System.Drawing.Size(98, 24);
 			this.btnCancel.TabIndex = 9;
@@ -228,7 +228,7 @@
 			this.lblSelSize.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
 			this.lblSelSize.AutoSize = true;
 			this.lblSelSize.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-			this.lblSelSize.Location = new System.Drawing.Point(184, 495);
+			this.lblSelSize.Location = new System.Drawing.Point(184, 598);
 			this.lblSelSize.Name = "lblSelSize";
 			this.lblSelSize.Size = new System.Drawing.Size(45, 13);
 			this.lblSelSize.TabIndex = 8;
@@ -282,7 +282,7 @@
 			this.panYZ.Controls.Add(this.pboxWorldXZ);
 			this.panYZ.Location = new System.Drawing.Point(0, 65);
 			this.panYZ.Name = "panYZ";
-			this.panYZ.Size = new System.Drawing.Size(391, 418);
+			this.panYZ.Size = new System.Drawing.Size(391, 521);
 			this.panYZ.TabIndex = 5;
 			// 
 			// pboxWorldXZ
@@ -293,7 +293,7 @@
 			this.pboxWorldXZ.BackColor = System.Drawing.Color.Transparent;
 			this.pboxWorldXZ.Location = new System.Drawing.Point(0, 0);
 			this.pboxWorldXZ.Name = "pboxWorldXZ";
-			this.pboxWorldXZ.Size = new System.Drawing.Size(387, 414);
+			this.pboxWorldXZ.Size = new System.Drawing.Size(387, 517);
 			this.pboxWorldXZ.TabIndex = 0;
 			this.pboxWorldXZ.TabStop = false;
 			this.pboxWorldXZ.SizeChanged += new System.EventHandler(this.ResizeXZ);
@@ -317,7 +317,7 @@
 			this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
 			this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
 			this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(200)))), ((int)(((byte)(200)))), ((int)(((byte)(200)))));
-			this.ClientSize = new System.Drawing.Size(1096, 582);
+			this.ClientSize = new System.Drawing.Size(1096, 685);
 			this.Controls.Add(this.lblInfo);
 			this.Controls.Add(this.splitContainer1);
 			this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));

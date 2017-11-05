@@ -38,8 +38,9 @@ namespace import
 		/// <param name="dim">Dimension to load.</param>
 		public bool Load(string filename, Dimension dim)
 		{
+			FileInfo info = new FileInfo(filename);
 			this.filename = filename;
-			name = new DirectoryInfo(filename).Name;
+			name = info.Directory.Name;
 
 			// Clear old regions
 			for (int r = 0; r < regions.Count; r++)
@@ -63,7 +64,7 @@ namespace import
 			spawnPos.Z = nbtData.Get("SpawnY").value;
 
 			// Get regions
-			string regionFolder = new FileInfo(filename).DirectoryName;
+			string regionFolder = info.DirectoryName;
 			if (dim == Dimension.OVERWORLD)
 				regionFolder += @"\region";
 			else

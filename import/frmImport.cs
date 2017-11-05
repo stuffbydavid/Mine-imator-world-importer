@@ -84,7 +84,7 @@ namespace import
 		// Folders
 		public static string mcSaveFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\.minecraft\saves";
 		public static string currentFolder = Application.StartupPath; //@"D:\OneDrive\Projects\Minecraft\Mine-imator\Source\datafiles\Data"; //
-		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.12.midata";
+		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.12.2.midata";
 		public static string miLangFile = currentFolder + @"\Languages\english.milanguage";
 		public static string miBlockPreviewFile = currentFolder + @"\blockpreview.midata";
 		public static string miBlockFilterFile = currentFolder + @"\blockfilter.midata";
