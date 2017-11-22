@@ -83,11 +83,12 @@ namespace import
 
 		// Folders
 		public static string mcSaveFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\.minecraft\saves";
-		public static string currentFolder = Application.StartupPath; //@"D:\OneDrive\Projects\Minecraft\Mine-imator\Source\datafiles\Data"; //
+		public static string currentFolder = @"D:\OneDrive\Projects\Minecraft\Mine-imator\Source\datafiles\Data";// Application.StartupPath; //
 		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.12.2.midata";
-		public static string miLangFile = currentFolder + @"\Languages\english.milanguage";
 		public static string miBlockPreviewFile = currentFolder + @"\blockpreview.midata";
 		public static string miBlockFilterFile = currentFolder + @"\blockfilter.midata";
+		public static string miSettingsFile = currentFolder + @"\settings.midata";
+		public string miLangFile = currentFolder + @"\Languages\english.milanguage";
 
 		// Language
 		public Dictionary<string, string> languageMap = new Dictionary<string, string>();
@@ -161,6 +162,7 @@ namespace import
 				return;
 			}
 
+			LoadSettings(miSettingsFile);
 			LoadLanguage(miLangFile);
 			LoadBlockPreviews(miBlockPreviewFile);
 			LoadBlocks(mcAssetsFile);
@@ -195,6 +197,25 @@ namespace import
 			foreach (DirectoryInfo d in dir.GetDirectories())
 				if (File.Exists(d.FullName + @"\level.dat"))
 					cbxSaves.Items.Add(new WorldOption(d.FullName + @"\level.dat", d.Name));
+		}
+
+		/// <summary>Loads the chosen translation file from the settings (if available).</summary>
+		private void LoadSettings(string filename)
+		{
+			if (!File.Exists(filename))
+				return;
+
+			string json = File.ReadAllText(filename);
+			try
+			{
+				JsonObject root = (JsonObject)serializer.DeserializeObject(json);
+				JsonObject settingsInterface = root["interface"];
+				miLangFile = settingsInterface["language_filename"];
+			}
+			catch (Exception e)
+			{
+				return;
+			}
 		}
 
 		/// <summary>Loads the .milanguage file containing the text of the program.</summary>
@@ -377,7 +398,7 @@ namespace import
 						Chunk chunk = world.GetChunk(x, y);
 
 						// Add tile entities of newly iterated chunk
-						if (!chunk.tileEntitiesAdded)
+						if (chunk != null && !chunk.tileEntitiesAdded)
 						{
 							foreach (NBTTag tag in chunk.tileEntities.value)
 							{

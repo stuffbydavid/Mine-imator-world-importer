@@ -109,6 +109,11 @@ namespace import
 			{
 				NBTReader nbt = new NBTReader();
 				NBTCompound nbtRoot = nbt.Open(File.ReadAllBytes(filename), DataFormat.GZIP);
+				NBTCompound nbtData = nbtRoot.Get("Data");
+				NBTCompound nbtVersion = nbtData.Get("Version");
+				int versionId = nbtVersion.Get("Id").value;
+				if (versionId >= 1451)
+					throw new Exception("TODO");
 			}
 			catch (Exception e)
 			{
@@ -170,7 +175,7 @@ namespace import
 		/// <param name="z">z value to check.</param>
 		public LegacyBlock GetLegacyBlock(Chunk chunk, int x, int y, int z)
 		{
-			if (chunk.sections[z / 16] == null)
+			if (chunk == null || chunk.sections[z / 16] == null)
 				return null;
 
 			Chunk.Section sec = chunk.sections[z / 16];
