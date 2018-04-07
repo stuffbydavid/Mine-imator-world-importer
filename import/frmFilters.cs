@@ -58,7 +58,7 @@ namespace import
 			{ 
 				BlockOption option = new BlockOption(pair.Key, pair.Value.displayName);
 				cbxBlocks.Items.Add(option);
-				if (import.filterBlocks.Contains(pair.Key))
+				if (import.filterBlockNames.Contains(pair.Key))
 					lbxFilters.Items.Add(option);
 			}
 
@@ -81,17 +81,17 @@ namespace import
 
 			// Already added in list
 			BlockOption option = (BlockOption)cbxBlocks.SelectedItem;
-			if (import.filterBlocks.Contains(option.name))
+			if (import.filterBlockNames.Contains(option.name))
 				return;
 
-			import.filterBlocks.Add(option.name);
+			import.filterBlockNames.Add(option.name);
 			lbxFilters.Items.Add(option);
 		}
 
 		private void btnRemove_Click(object sender, EventArgs e)
 		{
 			BlockOption option = (BlockOption)lbxFilters.SelectedItem;
-			import.filterBlocks.Remove(option.name);
+			import.filterBlockNames.Remove(option.name);
 			lbxFilters.Items.Remove(option);
 			btnRemove.Enabled = false;
 		}
@@ -109,8 +109,8 @@ namespace import
 			json += "\t\"active\": " + (cbxActivate.Checked ? "true" : "false") + ",\n";
 			json += "\t\"invert\": " + (rbtnKeep.Checked ? "true" : "false") + ",\n";
 			json += "\t\"blocks\": [\n";
-			for (int i = 0; i < import.filterBlocks.Count; i++)
-				json += "\t\t\"" + import.filterBlocks[i] + "\"" + (i < import.filterBlocks.Count - 1 ? "," : "" ) + "\n";
+			for (int i = 0; i < import.filterBlockNames.Count; i++)
+				json += "\t\t\"" + import.filterBlockNames[i] + "\"" + (i < import.filterBlockNames.Count - 1 ? "," : "" ) + "\n";
 			json += "\t]\n";
 			json += "}";
 

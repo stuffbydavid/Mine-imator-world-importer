@@ -5,11 +5,14 @@ using System.IO;
 using System.Windows.Forms;
 using System.Web.Script.Serialization;
 
+
 namespace import
 {
 	using JsonObject = Dictionary<string, dynamic>;
 	using JsonNameValuePair = KeyValuePair<string, dynamic>;
 	using JsonList = List<dynamic>;
+	using Vars = Dictionary<string, string>;
+	using VarNameValuePair = KeyValuePair<string, string>;
 
 	public partial class frmImport : Form
 	{
@@ -35,37 +38,47 @@ namespace import
 				public class Value
 				{
 					public string name;
-					public Block.Preview preview = null;
+					public ushort id;
+					public short previewKey = 0;
 
-					public Value(string name)
+					public Value(string name, ushort id)
 					{
 						this.name = name;
+						this.id = id;
 					}
 				}
 
 				public string name;
-				public Dictionary<string, Block.State.Value> values = new Dictionary<string, Block.State.Value>();
+				public ushort id;
+				public Dictionary<string, Block.State.Value> valueNameMap = new Dictionary<string, Block.State.Value>();
 
-				public State(string name)
+				public State(string name, ushort id)
 				{
 					this.name = name;
+					this.id = id;
 				}
 			}
 
 			public string name, displayName;
 			public Block.Preview preview = null;
-			public Dictionary<string, Block.State> states = new Dictionary<string, Block.State>();
-			public Block.Preview[] legacyDataPreview = new Block.Preview[16];
+			public Dictionary<string, Block.State> stateNameMap = new Dictionary<string, Block.State>();
+			public Dictionary<string, Vars> mcIdVarsMap = new Dictionary<string, Vars>();
+			public short[] stateIdPreviewKey;
+			public Vars defaultVars = null;
 
 			public Block(string name)
 			{
 				this.name = name;
-				for (var i = 0; i < 16; i++)
-					legacyDataPreview[i] = null;
 			}
 		}
 
-		/// <summary>A choise in the world combobox.</summary>
+		public class LegacyBlock
+		{
+			public ushort[] legacyDataBlockIds = new ushort[16];
+			public ushort[] legacyDataBlockStateIds = new ushort[16];
+		}
+
+		/// <summary>A choice in the world combobox.</summary>
 		public class WorldOption
 		{
 			public string filename, name;
@@ -83,24 +96,31 @@ namespace import
 
 		// Folders
 		public static string mcSaveFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\.minecraft\saves";
-		public static string currentFolder = @"D:\OneDrive\Projects\Minecraft\Mine-imator\Source\datafiles\Data";// Application.StartupPath; //
-		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.12.2.midata";
+		public static string currentFolder = @"D:\Dropbox\Projects\Minecraft\Mine-imator\Source\datafiles\Data";// Application.StartupPath; //
+		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.13.midata";
+		public static string miLangFile = currentFolder + @"\Languages\english.milanguage";
 		public static string miBlockPreviewFile = currentFolder + @"\blockpreview.midata";
 		public static string miBlockFilterFile = currentFolder + @"\blockfilter.midata";
 		public static string miSettingsFile = currentFolder + @"\settings.midata";
-		public string miLangFile = currentFolder + @"\Languages\english.milanguage";
+		public static string miLegacyFile = currentFolder + @"\legacy.midata";
 
 		// Language
 		public Dictionary<string, string> languageMap = new Dictionary<string, string>();
 
 		// Blocks
-		public Dictionary<string, Block> blockNameMap = new Dictionary<string, Block>();
-		public Dictionary<byte, Block> blockLegacyIdMap = new Dictionary<byte, Block>();
-		public Dictionary<string, Block.Preview> blockPreviewMap = new Dictionary<string, Block.Preview>();
+		public Dictionary<string, Block> blockNameMap = new Dictionary<string, Block>(); // Name -> Block
+		public Dictionary<string, Block> blockMcIdMap = new Dictionary<string, Block>(); // Minecraft ID -> Block
+
+		// Block preview
+		public Dictionary<short, Block.Preview> blockPreviewMap = new Dictionary<short, Block.Preview>(); // Preview key -> preview
+		public Dictionary<string, int> blockPreviewFileKeyMap = new Dictionary<string, int>(); // JSON filename -> preview key
+
+		// Legacy
+		public short[,] blockLegacyPreviewKey = new short[256, 16]; // Legacy ID + data -> Preview key
 
 		// Filter
 		public bool filterBlocksActive = false, filterBlocksInvert = false;
-		public List<string> filterBlocks = new List<string>();
+		public List<string> filterBlockNames = new List<string>();
 
 		// Program
 		string savefile = "";
@@ -162,10 +182,18 @@ namespace import
 				return;
 			}
 
+			if (!File.Exists(miLegacyFile))
+			{
+				MessageBox.Show("Could not find legacy.midata, re-install the program.");
+				Application.Exit();
+				return;
+			}
+
 			LoadSettings(miSettingsFile);
 			LoadLanguage(miLangFile);
 			LoadBlockPreviews(miBlockPreviewFile);
 			LoadBlocks(mcAssetsFile);
+			LoadLegacyBlocks(miLegacyFile);
 
 			if (File.Exists(miBlockFilterFile))
 				LoadFilterBlocks(miBlockFilterFile);
@@ -193,6 +221,7 @@ namespace import
 			// Get worlds
 			if (!Directory.Exists(mcSaveFolder))
 				return;
+
 			DirectoryInfo dir = new DirectoryInfo(mcSaveFolder);
 			foreach (DirectoryInfo d in dir.GetDirectories())
 				if (File.Exists(d.FullName + @"\level.dat"))
@@ -209,7 +238,9 @@ namespace import
 			try
 			{
 				JsonObject root = (JsonObject)serializer.DeserializeObject(json);
+				JsonObject settingsAssets = root["assets"];
 				JsonObject settingsInterface = root["interface"];
+				mcAssetsFile = currentFolder + @"\Minecraft\" + settingsAssets["version"]+ ".midata";
 				miLangFile = settingsInterface["language_filename"];
 			}
 			catch (Exception e)
@@ -252,11 +283,405 @@ namespace import
 			else
 				return "<Text not found for \"" + prefix + name + "\">";
 		}
+		
+		/// <summary>Loads the top-down/cross-section colors of the blocks, as generated by Mine-imator.</summary>
+		public void LoadBlockPreviews(string filename)
+		{
+			// No preview
+			blockPreviewMap[0] = new Block.Preview(Color.Transparent, Color.Transparent);
+
+			string json = File.ReadAllText(filename);
+			try
+			{
+				JsonObject root = (JsonObject)serializer.DeserializeObject(json);
+				foreach (JsonNameValuePair key in root)
+				{
+					string file = key.Key;
+					JsonObject obj = (JsonObject)key.Value;
+					Block.Preview preview = new Block.Preview(Color.Transparent, Color.Transparent);
+
+					// Top-down color
+					if (obj.ContainsKey("Y"))
+					{
+						if (obj.ContainsKey("Y_alpha"))
+							preview.XYColor = Util.HexToColor(obj["Y"], (int)((float)obj["Y_alpha"] * 255.0f));
+						else
+							preview.XYColor = Util.HexToColor(obj["Y"]);
+					}
+
+					// Top-down color
+					if (obj.ContainsKey("Z"))
+					{
+						if (obj.ContainsKey("Z_alpha"))
+							preview.XZColor = Util.HexToColor(obj["Z"], (int)((float)obj["Z_alpha"] * 255.0f));
+						else
+							preview.XZColor = Util.HexToColor(obj["Z"]);
+					}
+
+					blockPreviewFileKeyMap[file] = blockPreviewMap.Count;
+					blockPreviewMap[(short)blockPreviewMap.Count] = preview;
+				}
+			}
+			catch (Exception e)
+			{
+				MessageBox.Show("Failed to load block previews");
+				Application.Exit();
+			}
+		}
+
+		/// <summary>Loads the blocks from the Minecraft version file.</summary>
+		/// <param name="filename">The version file.</param>
+		private void LoadBlocks(string filename)
+		{
+			string json = File.ReadAllText(filename);
+			try
+			{
+				JsonObject root = (JsonObject)serializer.DeserializeObject(json);
+				JsonList blocksList = new JsonList(root["blocks"]);
+
+				foreach (JsonObject curBlock in blocksList)
+				{
+					// Create block and set name
+					Block block = new Block(curBlock["name"]);
+					block.displayName = GetText(block.name, "block");
+
+					// Default state vars
+					if (curBlock.ContainsKey("default_state"))
+						block.defaultVars = StringToVars(curBlock["default_state"]);
+
+					// Get states (each possible combination of values for each variant is represented as an unique state ID for the block)
+					ushort stateIdAmount = 1;
+					if (curBlock.ContainsKey("states"))
+					{
+						JsonObject states = (JsonObject)curBlock["states"];
+
+						foreach (JsonNameValuePair pair in states)
+						{
+							Block.State state = new Block.State(pair.Key, stateIdAmount);
+							List<dynamic> valuesList = new JsonList(pair.Value);
+							stateIdAmount *= (ushort)valuesList.Count;
+							ushort valId = 0;
+
+							// Get values of this state
+							foreach (dynamic val in valuesList)
+							{
+								Block.State.Value value;
+
+								if (val.GetType() == typeof(string))
+									value = new Block.State.Value(val, valId++);
+								else
+								{
+									JsonObject curValue = (JsonObject)val;
+									value = new Block.State.Value(curValue["value"], valId++);
+
+									if (curValue.ContainsKey("file") && blockPreviewFileKeyMap.ContainsKey(curValue["file"]))
+										value.previewKey = (short)blockPreviewFileKeyMap[curValue["file"]];
+								}
+
+								state.valueNameMap[value.name] = value;
+							}
+
+							block.stateNameMap[pair.Key] = state;
+						}
+					}
+
+					// Connect to Minecraft ID(s)
+					dynamic mcId = curBlock["id"];
+					if (mcId.GetType() == typeof(string))
+					{ 
+						blockMcIdMap[mcId] = block;
+						block.mcIdVarsMap[mcId] = null;
+					}
+					else
+					{
+						// Store the variables for each Minecraft ID
+						foreach (JsonNameValuePair pair in mcId)
+						{
+							blockMcIdMap[pair.Key] = block;
+							if (pair.Value != "")
+								block.mcIdVarsMap[pair.Key] = StringToVars(pair.Value);
+							else
+								block.mcIdVarsMap[pair.Key] = null;
+						}
+					}
+
+					// Get preview key from name if available (water/lava only)
+					short previewKey = 0;
+					if (blockPreviewFileKeyMap.ContainsKey(block.name))
+						previewKey = (short)blockPreviewFileKeyMap[block.name];
+
+					// Get preview key from file if available
+					if (curBlock.ContainsKey("file") && blockPreviewFileKeyMap.ContainsKey(curBlock["file"]))
+						previewKey = (short)blockPreviewFileKeyMap[curBlock["file"]];
+
+					// Generate preview keys for each possible state (numerical ID) of the block
+					block.stateIdPreviewKey = new short[stateIdAmount];
+					for (var i = 0; i < stateIdAmount; i++)
+						block.stateIdPreviewKey[i] = previewKey;
+
+					foreach (dynamic nameState in block.stateNameMap)
+					{
+						Block.State state = (Block.State)nameState.Value;
+						foreach (dynamic nameValue in state.valueNameMap)
+						{
+							Block.State.Value value = (Block.State.Value)nameValue.Value;
+							if (value.previewKey == 0)
+								continue;
+
+							// Apply value preview colors to affected state IDs
+							for (var i = 0; i < stateIdAmount; i++)
+							{
+								var val = Util.IntDiv(i, state.id);
+								if (val == value.id)
+									block.stateIdPreviewKey[i] = value.previewKey;
+							}
+						}
+					}
+
+					blockNameMap[block.name] = block;
+				}
+			}
+			catch (Exception e)
+			{
+				MessageBox.Show("Failed to load Minecraft assets");
+				Application.Exit();
+			}
+		}
+
+		/// <summary> Load legacy block IDs/data and translate to block names and preview keys.</summary>
+		private void LoadLegacyBlocks(string filename)
+		{
+
+			string json = File.ReadAllText(filename);
+			try
+			{
+				JsonObject root = (JsonObject)serializer.DeserializeObject(json);
+				JsonObject legacyBlockIds = new JsonObject(root["legacy_block_id"]);
+
+				foreach (JsonNameValuePair pair in legacyBlockIds)
+				{
+					byte legacyId = Convert.ToByte(pair.Key);
+					JsonObject curBlock = (JsonObject)pair.Value;
+
+					// Look for Minecraft ID
+					string mcId = "";
+					if (curBlock.ContainsKey("id"))
+						mcId = curBlock["id"];
+
+					// Minecraft ID and variables for each data value
+					Vars[] dataVars = new Vars[16];
+					for (int d = 0; d < 16; d++)
+						dataVars[d] = new Vars();
+
+					// Process data
+					if (curBlock.ContainsKey("data"))
+						LoadLegacyBlocksData((JsonObject)curBlock["data"], 0, 1, ref dataVars);
+
+					// Get preview keys for each data value
+					for (int d = 0; d < 16; d++)
+					{
+						blockLegacyPreviewKey[legacyId, d] = 0;
+
+						string curMcId = mcId;
+						if (dataVars[d].ContainsKey("id"))
+						{
+							curMcId = dataVars[d]["id"];
+							dataVars[d].Remove("id");
+						}
+
+						if (!blockMcIdMap.ContainsKey(curMcId))
+							continue;
+
+						blockLegacyPreviewKey[legacyId, d] = GetBlockPreviewKey(curMcId, dataVars[d]);
+					}
+				}
+			}
+			catch (Exception e)
+			{
+				MessageBox.Show("Failed to load Legacy file");
+				Application.Exit();
+			}
+		}
+		private void LoadLegacyBlocksData(JsonObject obj, byte bitMask, byte bitBase, ref Vars[] dataVars)
+		{
+			foreach (JsonNameValuePair pair in obj)
+			{
+				switch (pair.Key)
+				{
+					// Bitmasks
+					case "0x1":			LoadLegacyBlocksData((JsonObject)pair.Value, 1, 1, ref dataVars); break;
+					case "0x2":			LoadLegacyBlocksData((JsonObject)pair.Value, 2, 2, ref dataVars); break;
+					case "0x4":			LoadLegacyBlocksData((JsonObject)pair.Value, 4, 4, ref dataVars); break;
+					case "0x8":			LoadLegacyBlocksData((JsonObject)pair.Value, 8, 8, ref dataVars); break;
+					case "0x1+0x2":		LoadLegacyBlocksData((JsonObject)pair.Value, 3, 1, ref dataVars); break;
+					case "0x1+0x2+0x4": LoadLegacyBlocksData((JsonObject)pair.Value, 7, 1, ref dataVars); break;
+					case "0x4+0x8":		LoadLegacyBlocksData((JsonObject)pair.Value, 12, 4, ref dataVars); break;
+
+					// Number (apply previous bitmask)
+					default:
+					{
+						byte value = Convert.ToByte(pair.Key);
+						Vars vars = StringToVars(pair.Value);
+
+						// Insert into array
+						if (bitMask > 0)
+						{
+							for (var d = 0; d < 16; d++)
+								if ((d & bitMask) / bitBase == value) // Check data value with bitmask
+									VarsAdd(ref dataVars[d], vars);
+						}
+						else
+							VarsAdd(ref dataVars[value], vars);
+
+						break;
+					}
+				}
+			}
+		}
+
+		/// <summary>Methods for handling block IDs/state IDs, used to generate the graphical preview.</summary>
+		/*public short GetBlockId(string name)
+		{
+			return blockNameMap[name].id;
+		}
+
+		public short GetBlockId(byte legacyId)
+		{
+			return 0;// blockLegacyIdMap[legacyId].id;
+		}
+
+		public ushort GetBlockStateId(short blockId, NBTCompound properties)
+		{
+			return 0;
+		}
+
+		public ushort GetBlockStateId(short blockId, byte legacyData)
+		{
+			return blockIdMap[blockId].legacyDataStateIds[legacyData];
+		}*/
+
+		Vars StringToVars(string str)
+		{
+			Vars vars = new Vars();
+			string[] varsSplit = str.Split(new char[] { ',' });
+
+			foreach (string s in varsSplit)
+			{
+				string[] nameValSplit = s.Split(new char[] { '=' });
+				vars[nameValSplit[0]] = nameValSplit[1];
+			}
+
+			return vars;
+		}
+
+		private void VarsAdd(ref Vars dest, Vars source)
+		{
+			foreach (VarNameValuePair pair in source)
+				dest[pair.Key] = pair.Value;
+		}
+
+		private string VarsDebug(ref Vars vars)
+		{
+			string s = "";
+			foreach (VarNameValuePair pair in vars)
+				s += (s != "" ? ", " : "") + pair.Key + " = " + pair.Value;
+			return "{" + s + "}";
+		}
+
+		public short GetBlockPreviewKey(string mcId, NBTCompound nbtVars)
+		{
+			if (nbtVars == null)
+				return GetBlockPreviewKey(mcId);
+			
+			// Convert dictionary of string->NBTTag of TAG_String to string->string
+			Vars vars = new Vars();
+			foreach (KeyValuePair<string, NBTTag> nbtPair in nbtVars.value)
+				vars[nbtPair.Key] = (nbtPair.Value).value;
+
+			return GetBlockPreviewKey(mcId, vars);
+		}
+
+		public short GetBlockPreviewKey(string mcId, Vars vars = null)
+		{
+			// Check if the Minecraft ID has no definition, and thus shouldn't be displayed
+			if (!blockMcIdMap.ContainsKey(mcId))
+				return 0;
+
+			// Find the current Mine-imator block from the Minecraft ID
+			Block block = blockMcIdMap[mcId];
+
+			// No variables supplied, a single state is assumed, return it.
+			if (vars == null)
+				return block.stateIdPreviewKey[0];
+
+			// Combine with the variables of the block's Minecraft ID
+			Vars finalVars = new Vars();
+
+			if (block.defaultVars != null)
+				VarsAdd(ref finalVars, block.defaultVars);
+
+			if (block.mcIdVarsMap[mcId] != null)
+				VarsAdd(ref finalVars, block.mcIdVarsMap[mcId]);
+
+			VarsAdd(ref finalVars, vars);
+
+			// Calculate state ID of the block and get final preview key
+			ushort stateId = 0;
+			foreach (VarNameValuePair pair in finalVars)
+			{
+				string stateName = pair.Key;
+				string stateVal = pair.Value;
+
+				if (stateName != "id" && block.stateNameMap.ContainsKey(stateName))
+				{
+					Block.State blockState = block.stateNameMap[stateName];
+					if (blockState.valueNameMap.ContainsKey(stateVal))
+						stateId += (ushort)(blockState.id * blockState.valueNameMap[stateVal].id);
+				}
+			}
+
+			return block.stateIdPreviewKey[stateId];
+		}
+
+		/// <summary>Loads the world from the combobox and resets the view.</summary>
+		private void LoadWorld(string filename)
+		{
+			Dimension dim;
+			if (rbtNether.Checked)
+				dim = Dimension.NETHER;
+			else if (rbtEnd.Checked)
+				dim = Dimension.END;
+			else
+				dim = Dimension.OVERWORLD;
+
+			if (world.Load(filename, dim))
+			{
+				XYImageMidPos = new Point((int)world.playerPos.X, (int)world.playerPos.Y);
+				XYImageZoom = 8;
+				selectStart = new Point3D<int>((int)world.playerPos.X - 10, (int)world.playerPos.Y - 10, (int)world.playerPos.Z - 10);
+				selectEnd = new Point3D<int>((int)world.playerPos.X + 10, (int)world.playerPos.Y + 10, (int)world.playerPos.Z + 10);
+				selectStart.Z = Math.Max(Math.Min(selectStart.Z, 255), 0);
+				selectEnd.Z = Math.Max(Math.Min(selectEnd.Z, 255), 0);
+				UpdateSizeLabel();
+				btnDone.Enabled = true;
+				XZImageMidPos = new Point(selectStart.X + (selectEnd.X - selectStart.X) / 2, selectStart.Z + (selectEnd.Z - selectStart.Z) / 2);
+
+				UpdateXYMap(0, 0);
+				UpdateXZMap();
+			}
+			else
+			{
+				pboxWorldXY.Image = new Bitmap(1, 1);
+				pboxWorldXZ.Image = new Bitmap(1, 1);
+				btnDone.Enabled = false;
+			}
+		}
 
 		/// <summary>Saves the selection into a .schematic file.</summary>
+		/// TODO MOVE TO World
 		private void SaveBlocks(string filename)
 		{
-			world.SaveReset();
+			/*world.SaveReset();
 
 			#region Trim unnecessary space
 			int sx, sy, sz, ex, ey, ez;
@@ -275,7 +700,7 @@ namespace import
 				{
 					for (int z = selectStart.Z; z <= selectEnd.Z; z++)
 					{
-						if (world.IsLegacyBlockNotAir(this, sx, y, z))
+						if (world.IsBlockNotAir(this, sx, y, z))
 						{
 							foundblock = true;
 							break;
@@ -294,7 +719,7 @@ namespace import
 				{
 					for (int z = selectStart.Z; z <= selectEnd.Z; z++)
 					{
-						if (world.IsLegacyBlockNotAir(this, ex, y, z))
+						if (world.IsBlockNotAir(this, ex, y, z))
 						{
 							foundblock = true;
 							break;
@@ -313,7 +738,7 @@ namespace import
 				{
 					for (int z = selectStart.Z; z <= selectEnd.Z; z++)
 					{
-						if (world.IsLegacyBlockNotAir(this, x, sy, z))
+						if (world.IsBlockNotAir(this, x, sy, z))
 						{
 							foundblock = true;
 							break;
@@ -332,7 +757,7 @@ namespace import
 				{
 					for (int z = selectStart.Z; z <= selectEnd.Z; z++)
 					{
-						if (world.IsLegacyBlockNotAir(this, x, ey, z))
+						if (world.IsBlockNotAir(this, x, ey, z))
 						{
 							foundblock = true;
 							break;
@@ -351,7 +776,7 @@ namespace import
 				{
 					for (int y = selectStart.Y; y <= selectEnd.Y; y++)
 					{
-						if (world.IsLegacyBlockNotAir(this, x, y, sz))
+						if (world.IsBlockNotAir(this, x, y, sz))
 						{
 							foundblock = true;
 							break;
@@ -370,7 +795,7 @@ namespace import
 				{
 					for (int y = selectStart.Y; y <= selectEnd.Y; y++)
 					{
-						if (world.IsLegacyBlockNotAir(this, x, y, ez))
+						if (world.IsBlockNotAir(this, x, y, ez))
 						{
 							foundblock = true;
 							break;
@@ -421,16 +846,16 @@ namespace import
 						}
 
 						// Add block
-						World.LegacyBlock block = world.GetLegacyBlock(chunk, x, y, z);
-						if (block == null || block.id == 0 || IsLegacyBlockFiltered(block))
+						World.Block block = world.GetBlock(chunk, x, y, z);
+						if (block == null || block.id < 0 || IsBlockFiltered(block))
 						{
 							blockLegacyIdArray[pos] = 0;
 							blockLegacyDataArray[pos] = 0;
 						}
 						else
 						{
-							blockLegacyIdArray[pos] = block.id;
-							blockLegacyDataArray[pos] = block.data;
+							//blockLegacyIdArray[pos] = block.id;
+							//blockLegacyDataArray[pos] = block.data;
 						}
 						pos++;
 					}
@@ -456,15 +881,15 @@ namespace import
 			catch (Exception e)
 			{
 				MessageBox.Show(GetText("fileopened"));
-			}
+			}*/
 		}
 
 		/// <summary>Returns whether a block is filtered by the user.</summary>
-		/// <param name="block">The world block to check</param>
-		public bool IsLegacyBlockFiltered(World.LegacyBlock block)
+		/// <param name="name">The name of the block to check</param>
+		public bool IsBlockFiltered(string name)
 		{
-			if (filterBlocksActive && blockLegacyIdMap.ContainsKey(block.id) && filterBlocks.Contains(blockLegacyIdMap[block.id].name))
-				return !filterBlocksInvert;
+			/*if (filterBlocksActive && blockIdMap.ContainsKey(block.id) && filterBlockNames.Contains(blockIdMap[block.id].name))
+				return !filterBlocksInvert;*/
 
 			return filterBlocksInvert;
 		}
@@ -487,222 +912,6 @@ namespace import
 			}
 			else
 				lblSelSize.Text = GetText("noworld");
-		}
-
-		/// <summary>Loads the blocks from the Minecraft version file.</summary>
-		/// <param name="filename">The version file.</param>
-		public void LoadBlocks(string filename)
-		{
-			string json = File.ReadAllText(filename);
-			try
-			{
-				JsonObject root = (JsonObject)serializer.DeserializeObject(json);
-				JsonList blocksList = new JsonList(root["blocks"]);
-
-				foreach (JsonObject curBlock in blocksList)
-				{
-					Block block = new Block(curBlock["name"]);
-
-					// Get preview from name if available
-					if (blockPreviewMap.ContainsKey(block.name))
-						block.preview = blockPreviewMap[block.name];
-
-					block.displayName = GetText(block.name, "block");
-
-					// Get preview from file if available
-					if (curBlock.ContainsKey("file") && blockPreviewMap.ContainsKey(curBlock["file"]))
-						block.preview = blockPreviewMap[curBlock["file"]];
-
-					// Get states
-					if (curBlock.ContainsKey("states"))
-					{
-						JsonObject states = (JsonObject)curBlock["states"];
-						foreach (JsonNameValuePair pair in states)
-						{
-							Block.State state = new Block.State(pair.Key);
-							List<dynamic> valuesList = new JsonList(pair.Value);
-
-							// Get values of this state
-							foreach (dynamic val in valuesList)
-							{
-								Block.State.Value value;
-
-								if (val.GetType() == typeof(string))
-									value = new Block.State.Value(val);
-								else
-								{
-									JsonObject curValue = (JsonObject)val;
-									value = new Block.State.Value(curValue["value"]);
-
-									if (curValue.ContainsKey("file") && blockPreviewMap.ContainsKey(curValue["file"]))
-										value.preview = blockPreviewMap[curValue["file"]];
-								}
-
-								state.values[value.name] = value;
-							}
-
-							block.states[pair.Key] = state;
-						}
-					}
-
-					// Add to ID Map
-					if (curBlock.ContainsKey("legacy_id"))
-						blockLegacyIdMap[(byte)curBlock["legacy_id"]] = block;
-
-					// Create data states
-					if (block.preview != null)
-						for (var i = 0; i < 16; i++)
-							block.legacyDataPreview[i] = block.preview;
-					if (curBlock.ContainsKey("legacy_data"))
-						LoadBlocksLegacyData(ref block, (JsonObject)curBlock["legacy_data"], 0, 1);
-
-					blockNameMap[block.name] = block;
-				}
-			}
-			catch (Exception e)
-			{
-				MessageBox.Show("Failed to load Minecraft assets");
-				Application.Exit();
-			}
-
-			// Water/Lava
-			blockNameMap["flowing_water"] = blockNameMap["water"];
-			blockNameMap["flowing_lava"] = blockNameMap["lava"];
-			blockLegacyIdMap[8] = blockLegacyIdMap[9];
-			blockLegacyIdMap[10] = blockLegacyIdMap[11];
-		}
-		private void LoadBlocksLegacyData(ref Block block, JsonObject obj, byte bitMask, byte bitBase)
-		{
-			foreach (JsonNameValuePair pair in obj)
-			{
-				switch (pair.Key)
-				{
-					// Bitmasks
-					case "0x1":			LoadBlocksLegacyData(ref block, (JsonObject)pair.Value, 1, 1); break;
-					case "0x2":			LoadBlocksLegacyData(ref block, (JsonObject)pair.Value, 2, 2); break;
-					case "0x4":			LoadBlocksLegacyData(ref block, (JsonObject)pair.Value, 4, 4); break;
-					case "0x8":			LoadBlocksLegacyData(ref block, (JsonObject)pair.Value, 8, 8); break;
-					case "0x1+0x2":		LoadBlocksLegacyData(ref block, (JsonObject)pair.Value, 3, 1); break;
-					case "0x1+0x2+0x4": LoadBlocksLegacyData(ref block, (JsonObject)pair.Value, 7, 1); break;
-					case "0x4+0x8":		LoadBlocksLegacyData(ref block, (JsonObject)pair.Value, 12, 4); break;
-
-					// Number (apply previous bitmask)
-					default:
-					{
-						byte value = Convert.ToByte(pair.Key);
-						string[] stateString = pair.Value.Split(new char[] { ',' });
-						Block.Preview preview = null;
-
-						// Find preview of state
-						for (int s = 0; s < stateString.Length; s++)
-						{
-							string[] curStateString = stateString[s].Split(new char[] { '=' });
-							string stateName = curStateString[0];
-							string stateVal = curStateString[1];
-							if (block.states.ContainsKey(stateName))
-							{
-								Block.State blockState = block.states[stateName];
-								if (blockState.values.ContainsKey(stateVal))
-									preview = blockState.values[stateVal].preview;
-							}
-						}
-
-						if (preview != null)
-						{
-							// Insert into array
-							if (bitMask > 0)
-							{
-								for (var d = 0; d < 16; d++)
-									if ((d & bitMask) / bitBase == value) // Check data value with bitmask
-										block.legacyDataPreview[d] = preview;
-							}
-							else
-								block.legacyDataPreview[value] = preview;
-						}
-
-						break;
-					}
-				}
-			}
-		}
-
-		/// <summary>Loads the top-down/cross-section colors of the blocks, as generated by Mine-imator.</summary>
-		public void LoadBlockPreviews(string filename)
-		{
-			string json = File.ReadAllText(filename);
-			try
-			{
-				JsonObject root = (JsonObject)serializer.DeserializeObject(json);
-				foreach (JsonNameValuePair key in root)
-				{
-					string file = key.Key;
-					JsonObject obj = (JsonObject)key.Value;
-					Block.Preview preview = new Block.Preview(Color.Transparent, Color.Transparent);
-
-					// Top-down color
-					if (obj.ContainsKey("Y"))
-					{
-						if (obj.ContainsKey("Y_alpha"))
-							preview.XYColor = Util.HexToColor(obj["Y"], (int)((float)obj["Y_alpha"] * 255.0f));
-						else
-							preview.XYColor = Util.HexToColor(obj["Y"]);
-					}
-
-					// Top-down color
-					if (obj.ContainsKey("Z"))
-					{
-						if (obj.ContainsKey("Z_alpha"))
-							preview.XZColor = Util.HexToColor(obj["Z"], (int)((float)obj["Z_alpha"] * 255.0f));
-						else
-							preview.XZColor = Util.HexToColor(obj["Z"]);
-					}
-
-					blockPreviewMap[file] = preview;
-				}
-			}
-			catch (Exception e)
-			{
-				MessageBox.Show("Failed to load block previews");
-				Application.Exit();
-			}
-		}
-
-		/// <summary>Loads the world from the combobox and resets the view.</summary>
-		private void LoadWorld(string filename)
-		{
-			Dimension dim;
-			if (rbtNether.Checked)
-				dim = Dimension.NETHER;
-			else if (rbtEnd.Checked)
-				dim = Dimension.END;
-			else
-				dim = Dimension.OVERWORLD;
-
-			if (!world.CanLoad(filename, dim))
-				return;
-
-			if (world.Load(filename, dim))
-			{
-				XYImageMidPos = new Point((int)world.playerPos.X, (int)world.playerPos.Y);
-				XYImageZoom = 8;
-				selectStart = new Point3D<int>((int)world.playerPos.X - 10, (int)world.playerPos.Y - 10, (int)world.playerPos.Z - 10);
-				selectEnd = new Point3D<int>((int)world.playerPos.X + 10, (int)world.playerPos.Y + 10, (int)world.playerPos.Z + 10);
-				selectStart.Z = Math.Max(Math.Min(selectStart.Z, 255), 0);
-				selectEnd.Z = Math.Max(Math.Min(selectEnd.Z, 255), 0);
-				UpdateSizeLabel();
-				btnDone.Enabled = true;
-				XZImageMidPos = new Point(selectStart.X + (selectEnd.X - selectStart.X) / 2, selectStart.Z + (selectEnd.Z - selectStart.Z) / 2);
-
-				UpdateXYMap(0, 0);
-				UpdateXZMap();
-			}
-			else
-			{
-				MessageBox.Show(GetText("worldopened"));
-				pboxWorldXY.Image = new Bitmap(1, 1);
-				pboxWorldXZ.Image = new Bitmap(1, 1);
-				btnDone.Enabled = false;
-			}
 		}
 
 		/// <summary>Gets the XY bitmap of the given chunk. If none have been generated, create it.</summary>
@@ -728,52 +937,37 @@ namespace import
 
 						for (int z = 15; z >= 0; z--)
 						{
-							byte id = section.blockLegacyIds[x, y, z];
-							if (id == 0)
+							short blockPreviewKey = section.blockPreviewKey[x, y, z];
+							if (blockPreviewKey == 0)
 								continue;
 
-							byte data = section.blockLegacyDatas[x, y, z];
-							World.LegacyBlock block = new World.LegacyBlock(id, data);
-
-							Color blockColor = GetLegacyBlockXYColor(block);
+							Color blockColor = blockPreviewMap[blockPreviewKey].XYColor;
 							if (blockColor != Color.Transparent)
 							{
 								bool highlight = false, shade = false;
-								World.LegacyBlock blockCheck;
-								Color blockCheckColor;
 
 								// Shade
 								if (s * 16 + z < 255)
 								{
-									blockCheck = world.GetLegacyBlock(chunk.X * 16 + x - 1, chunk.Y * 16 + y, s * 16 + z + 1);
-									if (blockCheck != null)
+									blockPreviewKey = world.GetBlockPreviewKey(chunk.X * 16 + x - 1, chunk.Y * 16 + y, s * 16 + z + 1);
+									if (blockPreviewKey != 0 && blockPreviewMap[blockPreviewKey].XYColor.A == 255)
+										shade = true;
+									else
 									{
-										blockCheckColor = GetLegacyBlockXYColor(blockCheck);
-										if (blockCheckColor.A == 255)
+										blockPreviewKey = world.GetBlockPreviewKey(chunk.X * 16 + x, chunk.Y * 16 + y - 1, s * 16 + z + 1);
+										if (blockPreviewKey != 0 && blockPreviewMap[blockPreviewKey].XYColor.A == 255)
 											shade = true;
-									}
-
-									if (!shade)
-									{
-										blockCheck = world.GetLegacyBlock(chunk.X * 16 + x, chunk.Y * 16 + y - 1, s * 16 + z + 1);
-										if (blockCheck != null)
-										{
-											blockCheckColor = GetLegacyBlockXYColor(blockCheck);
-											if (blockCheckColor.A == 255)
-												shade = true;
-										}
 									}
 								}
 
 								// Highlight
-								blockCheck = world.GetLegacyBlock(chunk.X * 16 + x - 1, chunk.Y * 16 + y, s * 16 + z);
-								if (blockCheck == null || blockCheck.id == 0)
+								blockPreviewKey = world.GetBlockPreviewKey(chunk.X * 16 + x - 1, chunk.Y * 16 + y, s * 16 + z);
+								if (blockPreviewKey == 0)
 									highlight = true;
-
-								if (s * 16 + z > 0 && !highlight)
+								else if (s * 16 + z > 0)
 								{
-									blockCheck = world.GetLegacyBlock(chunk.X * 16 + x, chunk.Y * 16 + y - 1, s * 16 + z - 1);
-									if (blockCheck == null || blockCheck.id == 0)
+									blockPreviewKey = world.GetBlockPreviewKey(chunk.X * 16 + x, chunk.Y * 16 + y - 1, s * 16 + z - 1);
+									if (blockPreviewKey == 0)
 										highlight = true;
 								}
 
@@ -823,14 +1017,11 @@ namespace import
 						Color finalColor = Color.Transparent;
 						for (int y = 15; y >= 0; y--)
 						{
-							byte id = section.blockLegacyIds[x, y, z];
-							if (id == 0)
+							short blockPreviewKey = section.blockPreviewKey[x, y, z];
+							if (blockPreviewKey == 0)
 								continue;
 
-							byte data = section.blockLegacyDatas[x, y, z];
-							World.LegacyBlock block = new World.LegacyBlock(id, data);
-
-							Color blockColor = GetLegacyBlockXZColor(block);
+							Color blockColor = blockPreviewMap[blockPreviewKey].XZColor;
 							if (blockColor != Color.Transparent)
 							{
 								// Add to final result, cancel if alpha is full
@@ -850,36 +1041,8 @@ namespace import
 			}
 
 			chunk.XZImage.UnlockImage();
-
+			
 			return chunk.XZImage.Image;
-		}
-
-		/// <summary>Gets the top-down drawing color of the block.</summary>
-		/// <param name="block">The block to get the color from.</param>
-		private Color GetLegacyBlockXYColor(World.LegacyBlock block)
-		{
-			if (blockLegacyIdMap.ContainsKey(block.id))
-			{
-				Block.Preview preview = blockLegacyIdMap[block.id].legacyDataPreview[block.data];
-				if (preview != null)
-					return preview.XYColor;
-			}
-
-			return Color.Transparent;
-		}
-
-		/// <summary>Gets the cross-section drawing color of the block.</summary>
-		/// <param name="block">The block to get the color from.</param>
-		private Color GetLegacyBlockXZColor(World.LegacyBlock block)
-		{
-			if (blockLegacyIdMap.ContainsKey(block.id))
-			{
-				Block.Preview preview = blockLegacyIdMap[block.id].legacyDataPreview[block.data];
-				if (preview != null)
-					return preview.XZColor;
-			}
-
-			return Color.Transparent;
 		}
 
 		/// <summary>Loads which blocks to filter out.</summary>
@@ -894,7 +1057,7 @@ namespace import
 				filterBlocksInvert = root["invert"];
 				JsonList blocksList = new JsonList(root["blocks"]);
 				foreach (dynamic curBlock in blocksList)
-					filterBlocks.Add((string)curBlock);
+					filterBlockNames.Add((string)curBlock);
 			}
 			catch (Exception e)
 			{
@@ -908,7 +1071,7 @@ namespace import
 		/// <summary>Updates the label of filterblocks.</summary>
 		public void UpdateFilterBlocks()
 		{
-			lblFilterInfo.Visible = (filterBlocksActive && (filterBlocks.Count > 0 || filterBlocksInvert));
+			lblFilterInfo.Visible = (filterBlocksActive && (filterBlockNames.Count > 0 || filterBlocksInvert));
 		}
 
 		/// <summary>Updates the bitmap of the XY map.</summary>
@@ -1048,7 +1211,7 @@ namespace import
 			XZStart = new Point((int)Math.Floor(XZImageMidPos.X - (screenwid / XZImageZoom) / 2), 0);
 			Bitmap bmp = new Bitmap(XZBlocksWidth, 256);
 
-			//Find chunks and draw them
+			// Find chunks and draw them
 			using (Graphics g = Graphics.FromImage(bmp))
 			{
 				for (int dy = selectEnd.Y - 48; dy <= selectEnd.Y; dy += 16)

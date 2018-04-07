@@ -355,9 +355,9 @@ namespace import
 
 				case TagType.BYTE_ARRAY:
 					int byteArrLen = ReadIntBE();
-					int byteArrPos = readPos;
+					value = new byte[byteArrLen];
+					Array.Copy(data, readPos, value, 0, byteArrLen);
 					readPos += byteArrLen;
-					value = byteArrPos;
 					break;
 
 				case TagType.STRING:
@@ -372,16 +372,16 @@ namespace import
 
 				case TagType.INT_ARRAY:
 					int intArrLen = ReadIntBE();
-					int intArrPos = readPos;
-					readPos += intArrLen * 4;
-					value = intArrPos;
+					value = new int[intArrLen];
+					for (var i = 0; i < intArrLen; i++)
+						value[i] = ReadIntBE();
 					break;
 
 				case TagType.LONG_ARRAY:
 					int longArrLen = ReadIntBE();
-					int longArrPos = readPos;
-					readPos += longArrLen * 8;
-					value = longArrPos;
+					value = new long[longArrLen];
+					for (var i = 0; i < longArrLen; i++)
+						value[i] = ReadLongBE();
 					break;
 			}
 
