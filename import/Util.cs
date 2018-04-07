@@ -33,22 +33,6 @@ namespace import
 				return (byte)((val >> 4) & 0x0F);
 		}
 
-		static public long BitReverse(long value, int numBits = 64)
-		{
-			long left = 1L << (numBits - 1);
-			long right = 1L;
-			long result = 0L;
-
-			for (int i = numBits - 1; i >= 1; i -= 2)
-			{
-				result |= (value & left) >> i;
-				result |= (value & right) << i;
-				left >>= 1;
-				right <<= 1;
-			}
-			return result;
-		}
-
 		static public int ModNeg(int x, int y)
 		{
 			if (x < 0)

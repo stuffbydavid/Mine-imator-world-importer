@@ -12,8 +12,9 @@ namespace import
 		public class Section
 		{
 			public short[,,] blockPreviewKey = new short[16, 16, 16];
-			public bool[] blockStateBits;
-			public NBTList blockPalette;
+			public short[,,] blockPalettePos;
+			public string[] blockPaletteMcId;
+			public NBTCompound[] blockPaletteProperties;
 			public byte[,,] blockLegacyId;
 			public byte[,,] blockLegacyData;
 
@@ -27,26 +28,29 @@ namespace import
 				// 1.13 world format
 				if (blockFormat == BlockFormat.MODERN)
 				{
-					blockPalette = nbtSection.Get("Palette");
-					if (blockPalette == null)
+					blockPalettePos = new short[16, 16, 16];
+
+					NBTList nbtBlockPalette = nbtSection.Get("Palette");
+					if (nbtBlockPalette == null)
 						return;
 
-					long[] sectionStateArray = nbtSection.Get("BlockStates").value;
-
 					// Generate bit array
+					long[] sectionStateArray = nbtSection.Get("BlockStates").value;
 					List<byte> bytes = new List<byte>();
-					blockStateBits = new bool[sectionStateArray.Length * 64];
+					bool[] blockStateBits = new bool[sectionStateArray.Length * 64];
 					foreach (long l in sectionStateArray)
 						bytes.AddRange(System.BitConverter.GetBytes(l));
 					new BitArray(bytes.ToArray()).CopyTo(blockStateBits, 0);
 
-					// Create lists
-					List<string> blockMcIds = new List<string>();
-					List<NBTCompound> blockProperties = new List<NBTCompound>();
-					foreach (NBTCompound nbtBlockCompound in blockPalette.value)
+					// Create palette
+					blockPaletteMcId = new string[nbtBlockPalette.Length()];
+					blockPaletteProperties = new NBTCompound[nbtBlockPalette.Length()];
+					int p = 0;
+					foreach (NBTCompound nbtBlockCompound in nbtBlockPalette.value)
 					{
-						blockMcIds.Add(nbtBlockCompound.Get("Name").value);
-						blockProperties.Add(nbtBlockCompound.Get("Properties"));
+						blockPaletteMcId[p] = nbtBlockCompound.Get("Name").value;
+						blockPaletteProperties[p] = nbtBlockCompound.Get("Properties");
+						p++;
 					}
 
 					// Parse blocks
@@ -64,7 +68,9 @@ namespace import
 										palettePos |= 1 << b;
 
 								if (palettePos > 0)
-									blockPreviewKey[x, y, z] = main.GetBlockPreviewKey(blockMcIds[palettePos], blockProperties[palettePos]);
+									blockPreviewKey[x, y, z] = main.GetBlockPreviewKey(blockPaletteMcId[palettePos], blockPaletteProperties[palettePos]);
+
+								blockPalettePos[x, y, z] = (short)palettePos;
 							}
 						}
 					}
@@ -104,24 +110,58 @@ namespace import
 			}
 		}
 
+		public byte[] data;
 		public int X, Y;
 		public FastBitmap XYImage, XZImage;
 		public Section[] sections;
 		public NBTList tileEntities;
-		public bool tileEntitiesAdded = false;
+		public bool tileEntitiesSaved;
+		public BlockFormat blockFormat;
 
 		/// <summary>Initializes a new chunk at the given position and with the given amount of sections (slices with 16x16x16 blocks).</summary>
-		/// <param name="x">x value to add the chunk.</param>
-		/// <param name="y">y value to add the chunk.</param>
-		public Chunk(int x, int y)
+		/// <param name="data">The uncompressed NBT Data of the chunk</param>
+		public Chunk(byte[] data, BlockFormat blockFormat)
 		{
-			X = x; Y = y;
+			this.data = data;
+			this.blockFormat = blockFormat;
 			XYImage = null;
 			XZImage = null;
 
 			sections = new Section[16];
 			for (int s = 0; s < 16; s++)
 				sections[s] = null;
+		}
+
+		/// <summary>Loads the blocks of the chunk. Returns whether successful.</summary>
+		public bool Load()
+		{
+			NBTReader nbt = new NBTReader();
+			NBTCompound nbtChunk = nbt.Open(data, DataFormat.ZLIB);
+			NBTCompound nbtLevel = (NBTCompound)nbtChunk.Get("Level");
+			NBTList nbtSections = (NBTList)nbtLevel.Get("Sections");
+
+			// No blocks in this chunk
+			if (nbtSections == null || nbtSections.Length() == 0)
+				return false;
+
+			X = nbtLevel.Get("xPos").value;
+			Y = nbtLevel.Get("zPos").value;
+			tileEntities = nbtLevel.Get("TileEntities");
+
+			// Process sections
+			for (int s = 0; s < nbtSections.Length(); s++)
+			{
+				NBTCompound nbtSection = (NBTCompound)nbtSections.Get(s);
+				Section section = new Section();
+				section.Load(nbtSection, blockFormat);
+
+				// Add section to chunk
+				int sectionZ = nbtSection.Get("Y").value;
+				sections[sectionZ] = section;
+			}
+
+			data = null;
+			return true;
 		}
 	}
 }

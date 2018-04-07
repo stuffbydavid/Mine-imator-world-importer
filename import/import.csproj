@@ -72,6 +72,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Chunk.cs" />
+    <Compile Include="SaveRegion.cs" />
     <Compile Include="frmFilters.cs">
       <SubType>Form</SubType>
     </Compile>

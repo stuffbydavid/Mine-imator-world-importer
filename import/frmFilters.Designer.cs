@@ -29,11 +29,11 @@
 			this.btnAdd = new System.Windows.Forms.Button();
 			this.lbxFilters = new System.Windows.Forms.ListBox();
 			this.btnRemove = new System.Windows.Forms.Button();
-			this.lblBlocksRemove = new System.Windows.Forms.Label();
+			this.lblBlocksToRemove = new System.Windows.Forms.Label();
 			this.cbxActivate = new System.Windows.Forms.CheckBox();
 			this.panFilters = new System.Windows.Forms.Panel();
-			this.rbtnKeep = new System.Windows.Forms.RadioButton();
-			this.rbtnRemove = new System.Windows.Forms.RadioButton();
+			this.rbtnKeepFiltered = new System.Windows.Forms.RadioButton();
+			this.rbtnRemoveBlocks = new System.Windows.Forms.RadioButton();
 			this.panFilters.SuspendLayout();
 			this.SuspendLayout();
 			// 
@@ -104,16 +104,16 @@
 			this.btnRemove.UseVisualStyleBackColor = true;
 			this.btnRemove.Click += new System.EventHandler(this.btnRemove_Click);
 			// 
-			// lblBlocksRemove
+			// lblBlocksToRemove
 			// 
-			this.lblBlocksRemove.AutoSize = true;
-			this.lblBlocksRemove.BackColor = System.Drawing.Color.Transparent;
-			this.lblBlocksRemove.ForeColor = System.Drawing.Color.Black;
-			this.lblBlocksRemove.Location = new System.Drawing.Point(9, 8);
-			this.lblBlocksRemove.Name = "lblBlocksRemove";
-			this.lblBlocksRemove.Size = new System.Drawing.Size(73, 13);
-			this.lblBlocksRemove.TabIndex = 9;
-			this.lblBlocksRemove.Text = "blocksremove";
+			this.lblBlocksToRemove.AutoSize = true;
+			this.lblBlocksToRemove.BackColor = System.Drawing.Color.Transparent;
+			this.lblBlocksToRemove.ForeColor = System.Drawing.Color.Black;
+			this.lblBlocksToRemove.Location = new System.Drawing.Point(9, 8);
+			this.lblBlocksToRemove.Name = "lblBlocksToRemove";
+			this.lblBlocksToRemove.Size = new System.Drawing.Size(82, 13);
+			this.lblBlocksToRemove.TabIndex = 9;
+			this.lblBlocksToRemove.Text = "blockstoremove";
 			// 
 			// cbxActivate
 			// 
@@ -135,9 +135,9 @@
 			this.panFilters.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
-			this.panFilters.Controls.Add(this.rbtnKeep);
-			this.panFilters.Controls.Add(this.lblBlocksRemove);
-			this.panFilters.Controls.Add(this.rbtnRemove);
+			this.panFilters.Controls.Add(this.rbtnKeepFiltered);
+			this.panFilters.Controls.Add(this.lblBlocksToRemove);
+			this.panFilters.Controls.Add(this.rbtnRemoveBlocks);
 			this.panFilters.Controls.Add(this.cbxBlocks);
 			this.panFilters.Controls.Add(this.btnRemove);
 			this.panFilters.Controls.Add(this.btnAdd);
@@ -147,33 +147,34 @@
 			this.panFilters.Size = new System.Drawing.Size(404, 324);
 			this.panFilters.TabIndex = 11;
 			// 
-			// rbtnKeep
+			// rbtnKeepFiltered
 			// 
-			this.rbtnKeep.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.rbtnKeep.AutoSize = true;
-			this.rbtnKeep.ForeColor = System.Drawing.Color.Black;
-			this.rbtnKeep.Location = new System.Drawing.Point(117, 295);
-			this.rbtnKeep.Name = "rbtnKeep";
-			this.rbtnKeep.Size = new System.Drawing.Size(49, 17);
-			this.rbtnKeep.TabIndex = 13;
-			this.rbtnKeep.Text = "keep";
-			this.rbtnKeep.UseVisualStyleBackColor = true;
-			this.rbtnKeep.CheckedChanged += new System.EventHandler(this.rbtnKeep_CheckedChanged);
+			this.rbtnKeepFiltered.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.rbtnKeepFiltered.AutoSize = true;
+			this.rbtnKeepFiltered.ForeColor = System.Drawing.Color.Black;
+			this.rbtnKeepFiltered.Location = new System.Drawing.Point(117, 295);
+			this.rbtnKeepFiltered.Name = "rbtnKeepFiltered";
+			this.rbtnKeepFiltered.Size = new System.Drawing.Size(80, 17);
+			this.rbtnKeepFiltered.TabIndex = 13;
+			this.rbtnKeepFiltered.TabStop = true;
+			this.rbtnKeepFiltered.Text = "keepfiltered";
+			this.rbtnKeepFiltered.UseVisualStyleBackColor = true;
+			this.rbtnKeepFiltered.CheckedChanged += new System.EventHandler(this.rbtnKeepFiltered_CheckedChanged);
 			// 
-			// rbtnRemove
+			// rbtnRemoveBlocks
 			// 
-			this.rbtnRemove.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-			this.rbtnRemove.AutoSize = true;
-			this.rbtnRemove.Checked = true;
-			this.rbtnRemove.ForeColor = System.Drawing.Color.Black;
-			this.rbtnRemove.Location = new System.Drawing.Point(9, 295);
-			this.rbtnRemove.Name = "rbtnRemove";
-			this.rbtnRemove.Size = new System.Drawing.Size(60, 17);
-			this.rbtnRemove.TabIndex = 12;
-			this.rbtnRemove.TabStop = true;
-			this.rbtnRemove.Text = "remove";
-			this.rbtnRemove.UseVisualStyleBackColor = true;
-			this.rbtnRemove.CheckedChanged += new System.EventHandler(this.rbtnRemove_CheckedChanged);
+			this.rbtnRemoveBlocks.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
+			this.rbtnRemoveBlocks.AutoSize = true;
+			this.rbtnRemoveBlocks.Checked = true;
+			this.rbtnRemoveBlocks.ForeColor = System.Drawing.Color.Black;
+			this.rbtnRemoveBlocks.Location = new System.Drawing.Point(9, 295);
+			this.rbtnRemoveBlocks.Name = "rbtnRemoveBlocks";
+			this.rbtnRemoveBlocks.Size = new System.Drawing.Size(91, 17);
+			this.rbtnRemoveBlocks.TabIndex = 12;
+			this.rbtnRemoveBlocks.TabStop = true;
+			this.rbtnRemoveBlocks.Text = "removefiltered";
+			this.rbtnRemoveBlocks.UseVisualStyleBackColor = true;
+			this.rbtnRemoveBlocks.CheckedChanged += new System.EventHandler(this.rbtnRemoveFiltered_CheckedChanged);
 			// 
 			// frmFilters
 			// 
@@ -205,10 +206,10 @@
 		private System.Windows.Forms.Button btnAdd;
 		private System.Windows.Forms.ListBox lbxFilters;
 		private System.Windows.Forms.Button btnRemove;
-		private System.Windows.Forms.Label lblBlocksRemove;
+		private System.Windows.Forms.Label lblBlocksToRemove;
 		private System.Windows.Forms.CheckBox cbxActivate;
 		private System.Windows.Forms.Panel panFilters;
-		private System.Windows.Forms.RadioButton rbtnRemove;
-		private System.Windows.Forms.RadioButton rbtnKeep;
+		private System.Windows.Forms.RadioButton rbtnRemoveBlocks;
+		private System.Windows.Forms.RadioButton rbtnKeepFiltered;
 	}
 }

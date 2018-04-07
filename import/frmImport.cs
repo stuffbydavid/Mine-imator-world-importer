@@ -13,7 +13,7 @@ namespace import
 	using JsonList = List<dynamic>;
 	using Vars = Dictionary<string, string>;
 	using VarNameValuePair = KeyValuePair<string, string>;
-
+	
 	public partial class frmImport : Form
 	{
 		/// <summary>A type of Minecraft block.</summary>
@@ -72,12 +72,6 @@ namespace import
 			}
 		}
 
-		public class LegacyBlock
-		{
-			public ushort[] legacyDataBlockIds = new ushort[16];
-			public ushort[] legacyDataBlockStateIds = new ushort[16];
-		}
-
 		/// <summary>A choice in the world combobox.</summary>
 		public class WorldOption
 		{
@@ -110,12 +104,9 @@ namespace import
 		// Blocks
 		public Dictionary<string, Block> blockNameMap = new Dictionary<string, Block>(); // Name -> Block
 		public Dictionary<string, Block> blockMcIdMap = new Dictionary<string, Block>(); // Minecraft ID -> Block
-
-		// Block preview
 		public Dictionary<short, Block.Preview> blockPreviewMap = new Dictionary<short, Block.Preview>(); // Preview key -> preview
 		public Dictionary<string, int> blockPreviewFileKeyMap = new Dictionary<string, int>(); // JSON filename -> preview key
-
-		// Legacy
+		public string[,] blockLegacyMcId = new string[256, 16]; // Legacy ID + data -> Minecraft ID
 		public short[,] blockLegacyPreviewKey = new short[256, 16]; // Legacy ID + data -> Preview key
 
 		// Filter
@@ -125,7 +116,9 @@ namespace import
 		// Program
 		string savefile = "";
 		World world = new World();
+		SaveRegion selectRegion = new SaveRegion();
 
+		// 3D selector
 		Point moveStartMPos, moveStartPos, XYImageMidPos, XZImageMidPos;
 		float XYImageZoom = 8, XZImageZoom = 4;
 		byte XYDragView = 0, XYDragSelect = 0;
@@ -133,7 +126,6 @@ namespace import
 
 		Image spawnImage = import.Properties.Resources.spawn;
 		Image playerImage = import.Properties.Resources.player;
-		Point3D<int> selectStart, selectEnd;
 		Point XYSelectStartDraw, XYSelectEndDraw, XYStart;
 		Point XZSelectStartDraw, XZSelectEndDraw, XZStart;
 		int XYBlocksWidth, XYBlocksHeight;
@@ -213,19 +205,17 @@ namespace import
 			btnCancel.Text = GetText("cancel");
 			lblFilterInfo.Text = GetText("filtersalert");
 
+			// Set labels
 			rbtNether.Location = new Point(rbtOver.Location.X + rbtOver.Width + 5, rbtOver.Location.Y);
 			rbtEnd.Location = new Point(rbtNether.Location.X + rbtNether.Width + 5, rbtOver.Location.Y);
 			UpdateSizeLabel();
 			UpdateFilterBlocks();
 
 			// Get worlds
-			if (!Directory.Exists(mcSaveFolder))
-				return;
-
-			DirectoryInfo dir = new DirectoryInfo(mcSaveFolder);
-			foreach (DirectoryInfo d in dir.GetDirectories())
-				if (File.Exists(d.FullName + @"\level.dat"))
-					cbxSaves.Items.Add(new WorldOption(d.FullName + @"\level.dat", d.Name));
+			if (Directory.Exists(mcSaveFolder))
+				foreach (DirectoryInfo d in new DirectoryInfo(mcSaveFolder).GetDirectories())
+					if (File.Exists(d.FullName + @"\level.dat"))
+						cbxSaves.Items.Add(new WorldOption(d.FullName + @"\level.dat", d.Name));
 		}
 
 		/// <summary>Loads the chosen translation file from the settings (if available).</summary>
@@ -451,7 +441,18 @@ namespace import
 		/// <summary> Load legacy block IDs/data and translate to block names and preview keys.</summary>
 		private void LoadLegacyBlocks(string filename)
 		{
+			// Clear data
+			for (int i = 0; i < 256; i++)
+			{
+				for (int d = 0; d < 16; d++)
+				{
+					blockLegacyMcId[i, d] = "";
+					blockLegacyPreviewKey[i, d] = 0;
+				}
 
+			}
+
+			// Parse file
 			string json = File.ReadAllText(filename);
 			try
 			{
@@ -489,6 +490,7 @@ namespace import
 							dataVars[d].Remove("id");
 						}
 
+						blockLegacyMcId[legacyId, d] = curMcId;
 						if (!blockMcIdMap.ContainsKey(curMcId))
 							continue;
 
@@ -539,27 +541,8 @@ namespace import
 			}
 		}
 
-		/// <summary>Methods for handling block IDs/state IDs, used to generate the graphical preview.</summary>
-		/*public short GetBlockId(string name)
-		{
-			return blockNameMap[name].id;
-		}
-
-		public short GetBlockId(byte legacyId)
-		{
-			return 0;// blockLegacyIdMap[legacyId].id;
-		}
-
-		public ushort GetBlockStateId(short blockId, NBTCompound properties)
-		{
-			return 0;
-		}
-
-		public ushort GetBlockStateId(short blockId, byte legacyData)
-		{
-			return blockIdMap[blockId].legacyDataStateIds[legacyData];
-		}*/
-
+		/// <summary>Converts a string of variables (like "foo=10,bar=hello") into a new Dictionary of name/value pairs.</summary>
+		/// <param name="str">The string to convert.</param>
 		Vars StringToVars(string str)
 		{
 			Vars vars = new Vars();
@@ -574,20 +557,18 @@ namespace import
 			return vars;
 		}
 
+		/// <summary>Adds two sets of variables together and stores the result in the first set.</summary>
+		/// <param name="dest">The target set of variables to be modified.</param>
+		/// <param name="source">A second set of variables that will overwrite the first.</param>
 		private void VarsAdd(ref Vars dest, Vars source)
 		{
 			foreach (VarNameValuePair pair in source)
 				dest[pair.Key] = pair.Value;
 		}
 
-		private string VarsDebug(ref Vars vars)
-		{
-			string s = "";
-			foreach (VarNameValuePair pair in vars)
-				s += (s != "" ? ", " : "") + pair.Key + " = " + pair.Value;
-			return "{" + s + "}";
-		}
-
+		/// <summary>Returns the preview colors of the block with the given Minecraft ID.</summary>
+		/// <param name="mcId">The Minecraft ID to check.</param>
+		/// <param name="nbtVars">The variables of the block.</param>
 		public short GetBlockPreviewKey(string mcId, NBTCompound nbtVars)
 		{
 			if (nbtVars == null)
@@ -600,7 +581,6 @@ namespace import
 
 			return GetBlockPreviewKey(mcId, vars);
 		}
-
 		public short GetBlockPreviewKey(string mcId, Vars vars = null)
 		{
 			// Check if the Minecraft ID has no definition, and thus shouldn't be displayed
@@ -643,6 +623,16 @@ namespace import
 			return block.stateIdPreviewKey[stateId];
 		}
 
+		/// <summary>Returns whether a block is filtered by the user.</summary>
+		/// <param name="mcId">The Minecraft ID of the block to check.</param>
+		public bool IsBlockFiltered(string mcId)
+		{
+			if (filterBlocksActive && blockMcIdMap.ContainsKey(mcId) && filterBlockNames.Contains(blockMcIdMap[mcId].name))
+				return !filterBlocksInvert;
+
+			return filterBlocksInvert;
+		}
+
 		/// <summary>Loads the world from the combobox and resets the view.</summary>
 		private void LoadWorld(string filename)
 		{
@@ -658,13 +648,13 @@ namespace import
 			{
 				XYImageMidPos = new Point((int)world.playerPos.X, (int)world.playerPos.Y);
 				XYImageZoom = 8;
-				selectStart = new Point3D<int>((int)world.playerPos.X - 10, (int)world.playerPos.Y - 10, (int)world.playerPos.Z - 10);
-				selectEnd = new Point3D<int>((int)world.playerPos.X + 10, (int)world.playerPos.Y + 10, (int)world.playerPos.Z + 10);
-				selectStart.Z = Math.Max(Math.Min(selectStart.Z, 255), 0);
-				selectEnd.Z = Math.Max(Math.Min(selectEnd.Z, 255), 0);
+				selectRegion.start = new Point3D<int>((int)world.playerPos.X - 10, (int)world.playerPos.Y - 10, (int)world.playerPos.Z - 10);
+				selectRegion.end = new Point3D<int>((int)world.playerPos.X + 10, (int)world.playerPos.Y + 10, (int)world.playerPos.Z + 10);
+				selectRegion.start.Z = Math.Max(Math.Min(selectRegion.start.Z, 255), 0);
+				selectRegion.end.Z = Math.Max(Math.Min(selectRegion.end.Z, 255), 0);
 				UpdateSizeLabel();
 				btnDone.Enabled = true;
-				XZImageMidPos = new Point(selectStart.X + (selectEnd.X - selectStart.X) / 2, selectStart.Z + (selectEnd.Z - selectStart.Z) / 2);
+				XZImageMidPos = new Point(selectRegion.start.X + (selectRegion.end.X - selectRegion.start.X) / 2, selectRegion.start.Z + (selectRegion.end.Z - selectRegion.start.Z) / 2);
 
 				UpdateXYMap(0, 0);
 				UpdateXZMap();
@@ -678,220 +668,17 @@ namespace import
 		}
 
 		/// <summary>Saves the selection into a .schematic file.</summary>
-		/// TODO MOVE TO World
 		private void SaveBlocks(string filename)
 		{
-			/*world.SaveReset();
-
-			#region Trim unnecessary space
-			int sx, sy, sz, ex, ey, ez;
-			sx = selectStart.X;
-			sy = selectStart.Y;
-			sz = selectStart.Z;
-			ex = selectEnd.X;
-			ey = selectEnd.Y;
-			ez = selectEnd.Z;
-
-			#region X+
-			for (sx = selectStart.X; sx < selectEnd.X; sx++)
-			{
-				bool foundblock = false;
-				for (int y = selectStart.Y; y <= selectEnd.Y; y++)
-				{
-					for (int z = selectStart.Z; z <= selectEnd.Z; z++)
-					{
-						if (world.IsBlockNotAir(this, sx, y, z))
-						{
-							foundblock = true;
-							break;
-						}
-					}
-					if (foundblock) break;
-				}
-				if (foundblock) break;
-			}
-			#endregion
-			#region X-
-			for (ex = selectEnd.X; ex > sx; ex--)
-			{
-				bool foundblock = false;
-				for (int y = selectStart.Y; y <= selectEnd.Y; y++)
-				{
-					for (int z = selectStart.Z; z <= selectEnd.Z; z++)
-					{
-						if (world.IsBlockNotAir(this, ex, y, z))
-						{
-							foundblock = true;
-							break;
-						}
-					}
-					if (foundblock) break;
-				}
-				if (foundblock) break;
-			}
-			#endregion
-			#region Y+
-			for (sy = selectStart.Y; sy < selectEnd.Y; sy++)
-			{
-				bool foundblock = false;
-				for (int x = selectStart.X; x <= selectEnd.X; x++)
-				{
-					for (int z = selectStart.Z; z <= selectEnd.Z; z++)
-					{
-						if (world.IsBlockNotAir(this, x, sy, z))
-						{
-							foundblock = true;
-							break;
-						}
-					}
-					if (foundblock) break;
-				}
-				if (foundblock) break;
-			}
-			#endregion
-			#region Y-
-			for (ey = selectEnd.Y; ey > sy; ey--)
-			{
-				bool foundblock = false;
-				for (int x = selectStart.X; x <= selectEnd.X; x++)
-				{
-					for (int z = selectStart.Z; z <= selectEnd.Z; z++)
-					{
-						if (world.IsBlockNotAir(this, x, ey, z))
-						{
-							foundblock = true;
-							break;
-						}
-					}
-					if (foundblock) break;
-				}
-				if (foundblock) break;
-			}
-			#endregion
-			#region Z+
-			for (sz = selectStart.Z; sz < selectEnd.Z; sz++)
-			{
-				bool foundblock = false;
-				for (int x = selectStart.X; x <= selectEnd.X; x++)
-				{
-					for (int y = selectStart.Y; y <= selectEnd.Y; y++)
-					{
-						if (world.IsBlockNotAir(this, x, y, sz))
-						{
-							foundblock = true;
-							break;
-						}
-					}
-					if (foundblock) break;
-				}
-				if (foundblock) break;
-			}
-			#endregion
-			#region Z-
-			for (ez = selectEnd.Z; ez > sz; ez--)
-			{
-				bool foundblock = false;
-				for (int x = selectStart.X; x <= selectEnd.X; x++)
-				{
-					for (int y = selectStart.Y; y <= selectEnd.Y; y++)
-					{
-						if (world.IsBlockNotAir(this, x, y, ez))
-						{
-							foundblock = true;
-							break;
-						}
-					}
-					if (foundblock) break;
-				}
-				if (foundblock) break;
-			}
-			#endregion
-			#endregion
-
-			int len = (ey - sy) + 1, wid = (ex - sx) + 1, hei = (ez - sz) + 1;
-			byte[] blockLegacyIdArray = new byte[len * wid * hei];
-			byte[] blockLegacyDataArray = new byte[len * wid * hei];
-			NBTList tileEntities = new NBTList(TagType.COMPOUND);
-
-			int pos = 0;
-			for (int z = sz; z <= ez; z++)
-			{
-				for (int y = sy; y <= ey; y++)
-				{
-					for (int x = sx; x <= ex; x++)
-					{
-						Chunk chunk = world.GetChunk(x, y);
-
-						// Add tile entities of newly iterated chunk
-						if (chunk != null && !chunk.tileEntitiesAdded)
-						{
-							foreach (NBTTag tag in chunk.tileEntities.value)
-							{
-								NBTCompound comp = (NBTCompound)tag;
-								int teX = comp.Get("x").value;
-								int teY = comp.Get("z").value;
-								int teZ = comp.Get("y").value;
-								if (teX < sx || teX > ex || teY < sy || teY > ey || teZ < sz || teZ > ez)
-									continue;
-
-								// Subtract by start position in a copy
-								NBTCompound newComp = (NBTCompound)comp.Copy();
-								newComp.Add(TagType.INT, "x", teX - sx);
-								newComp.Add(TagType.INT, "z", teY - sy);
-								newComp.Add(TagType.INT, "y", teZ - sz);
-								tileEntities.Add(newComp);
-							}
-
-							chunk.tileEntitiesAdded = true;
-						}
-
-						// Add block
-						World.Block block = world.GetBlock(chunk, x, y, z);
-						if (block == null || block.id < 0 || IsBlockFiltered(block))
-						{
-							blockLegacyIdArray[pos] = 0;
-							blockLegacyDataArray[pos] = 0;
-						}
-						else
-						{
-							//blockLegacyIdArray[pos] = block.id;
-							//blockLegacyDataArray[pos] = block.data;
-						}
-						pos++;
-					}
-				}
-			}
-
-			// Create schematic
-			NBTCompound schematic = new NBTCompound();
-			schematic.Add(TagType.SHORT, "Length", len);
-			schematic.Add(TagType.SHORT, "Width", wid);
-			schematic.Add(TagType.SHORT, "Height", hei);
-			schematic.Add(TagType.STRING, "Materials", "Alpha");
-			schematic.Add(TagType.STRING, "FromMap", world.name);
-			schematic.Add(TagType.BYTE_ARRAY, "Blocks", blockLegacyIdArray);
-			schematic.Add(TagType.BYTE_ARRAY, "Data", blockLegacyDataArray);
-			schematic.AddTag("TileEntities", tileEntities);
-
-			NBTWriter nbt = new NBTWriter();
 			try
 			{
-				nbt.Save(filename, "Schematic", schematic);
+				NBTWriter nbt = new NBTWriter();
+				nbt.Save(filename, "Schematic", world.SaveBlocks(selectRegion));
 			}
-			catch (Exception e)
+			catch (IOException e)
 			{
 				MessageBox.Show(GetText("fileopened"));
-			}*/
-		}
-
-		/// <summary>Returns whether a block is filtered by the user.</summary>
-		/// <param name="name">The name of the block to check</param>
-		public bool IsBlockFiltered(string name)
-		{
-			/*if (filterBlocksActive && blockIdMap.ContainsKey(block.id) && filterBlockNames.Contains(blockIdMap[block.id].name))
-				return !filterBlocksInvert;*/
-
-			return filterBlocksInvert;
+			}
 		}
 
 		/// <summary>Updates the label showing the selection size.</summary>
@@ -899,9 +686,9 @@ namespace import
 		{
 			if (world.filename != "")
 			{
-				int len = Math.Abs(selectEnd.X - selectStart.X) + 1;
-				int wid = Math.Abs(selectEnd.Y - selectStart.Y) + 1;
-				int hei = Math.Abs(selectEnd.Z - selectStart.Z) + 1;
+				int len = Math.Abs(selectRegion.end.X - selectRegion.start.X) + 1;
+				int wid = Math.Abs(selectRegion.end.Y - selectRegion.start.Y) + 1;
+				int hei = Math.Abs(selectRegion.end.Z - selectRegion.start.Z) + 1;
 				string text = GetText("size");
 
 				text = text.Replace("%1", len.ToString());
@@ -914,8 +701,8 @@ namespace import
 				lblSelSize.Text = GetText("noworld");
 		}
 
-		/// <summary>Gets the XY bitmap of the given chunk. If none have been generated, create it.</summary>
-		/// <param name="chunk">The wished chunk.</param>
+		/// <summary>Gets the XY bitmap of a chunk. If none have been generated, create it.</summary>
+		/// <param name="chunk">The current chunk.</param>
 		private Bitmap GetChunkXYImage(Chunk chunk)
 		{
 			if (chunk.XYImage != null)
@@ -994,8 +781,8 @@ namespace import
 			return chunk.XYImage.Image;
 		}
 
-		/// <summary>Gets the XZ bitmap of the given chunk. If none have been generated, create it.</summary>
-		/// <param name="chunk">The wished chunk.</param>
+		/// <summary>Gets the XZ bitmap of a chunk. If none have been generated, create it.</summary>
+		/// <param name="chunk">The current chunk.</param>
 		private Bitmap GetChunkXZImage(Chunk chunk)
 		{
 			if (chunk.XZImage != null)
@@ -1165,8 +952,8 @@ namespace import
 		/// <summary>Updates the bitmap for the XY selection box.</summary>
 		private void UpdateXYSel()
 		{
-			int sx = Math.Min(selectStart.X, selectEnd.X), sy = Math.Min(selectStart.Y, selectEnd.Y);
-			int ex = Math.Max(selectStart.X, selectEnd.X), ey = Math.Max(selectStart.Y, selectEnd.Y);
+			int sx = Math.Min(selectRegion.start.X, selectRegion.end.X), sy = Math.Min(selectRegion.start.Y, selectRegion.end.Y);
+			int ex = Math.Max(selectRegion.start.X, selectRegion.end.X), ey = Math.Max(selectRegion.start.Y, selectRegion.end.Y);
 			XYSelectStartDraw = new Point((int)((sx - XYStart.X) * XYImageZoom - XYImageZoom / 2), (int)(((sy - XYStart.Y)) * XYImageZoom - XYImageZoom / 2));
 			XYSelectEndDraw = new Point((int)((ex - XYStart.X) * XYImageZoom + XYImageZoom / 2), (int)((ey - XYStart.Y) * XYImageZoom + XYImageZoom / 2));
 
@@ -1214,7 +1001,7 @@ namespace import
 			// Find chunks and draw them
 			using (Graphics g = Graphics.FromImage(bmp))
 			{
-				for (int dy = selectEnd.Y - 48; dy <= selectEnd.Y; dy += 16)
+				for (int dy = selectRegion.end.Y - 48; dy <= selectRegion.end.Y; dy += 16)
 				{
 					for (int dx = 0; dx < XZBlocksWidth + 16; dx += 16)
 					{
@@ -1237,8 +1024,8 @@ namespace import
 		/// <summary>Updates the bitmap for the XZ selection box.</summary>
 		private void UpdateXZSel()
 		{
-			int sx = Math.Min(selectStart.X, selectEnd.X), sz = Math.Min(selectStart.Z, selectEnd.Z);
-			int ex = Math.Max(selectStart.X, selectEnd.X), ez = Math.Max(selectStart.Z, selectEnd.Z);
+			int sx = Math.Min(selectRegion.start.X, selectRegion.end.X), sz = Math.Min(selectRegion.start.Z, selectRegion.end.Z);
+			int ex = Math.Max(selectRegion.start.X, selectRegion.end.X), ez = Math.Max(selectRegion.start.Z, selectRegion.end.Z);
 			XZSelectStartDraw = new Point((int)((sx - XZStart.X) * XZImageZoom - XZImageZoom / 2), pboxWorldXZ.Size.Height - Math.Max(1, (int)(ez * XZImageZoom + XZImageZoom / 2)));
 			XZSelectEndDraw = new Point((int)((ex - XZStart.X) * XZImageZoom + XZImageZoom / 2), pboxWorldXZ.Size.Height - Math.Max(1, (int)(sz * XZImageZoom - XZImageZoom / 2)));
 			XZSelectBitmap.Dispose();
@@ -1320,47 +1107,47 @@ namespace import
 				}
 				else // Change rectangle
 				{
-					Point startprevpos = new Point(selectStart.X, selectStart.Y);
-					Point endprevpos = new Point(selectEnd.X, selectEnd.Y);
+					Point startprevpos = new Point(selectRegion.start.X, selectRegion.start.Y);
+					Point endprevpos = new Point(selectRegion.end.X, selectRegion.end.Y);
 					if (XYDragSelect == 1) // LU
 					{
-						selectStart.X = moveStartPos.X + dx;
-						selectStart.Y = moveStartPos.Y + dy;
+						selectRegion.start.X = moveStartPos.X + dx;
+						selectRegion.start.Y = moveStartPos.Y + dy;
 					}
 
 					if (XYDragSelect == 2) // U
-						selectStart.Y = moveStartPos.Y + dy;
+						selectRegion.start.Y = moveStartPos.Y + dy;
 
 					if (XYDragSelect == 3) // RU
 					{
-						selectEnd.X = moveStartPos.X + dx;
-						selectStart.Y = moveStartPos.Y + dy;
+						selectRegion.end.X = moveStartPos.X + dx;
+						selectRegion.start.Y = moveStartPos.Y + dy;
 					}
 
 					if (XYDragSelect == 4) // R
-						selectEnd.X = moveStartPos.X + dx;
+						selectRegion.end.X = moveStartPos.X + dx;
 
 					if (XYDragSelect == 5) // RD
 					{
-						selectEnd.X = moveStartPos.X + dx;
-						selectEnd.Y = moveStartPos.Y + dy;
+						selectRegion.end.X = moveStartPos.X + dx;
+						selectRegion.end.Y = moveStartPos.Y + dy;
 					}
 
 					if (XYDragSelect == 6) // D
-						selectEnd.Y = moveStartPos.Y + dy;
+						selectRegion.end.Y = moveStartPos.Y + dy;
 
 					if (XYDragSelect == 7) // LD
 					{
-						selectStart.X = moveStartPos.X + dx;
-						selectEnd.Y = moveStartPos.Y + dy;
+						selectRegion.start.X = moveStartPos.X + dx;
+						selectRegion.end.Y = moveStartPos.Y + dy;
 					}
 
 					if (XYDragSelect == 8) // L
-						selectStart.X = moveStartPos.X + dx;
+						selectRegion.start.X = moveStartPos.X + dx;
 
 					UpdateSizeLabel();
-					Point startnewpos = new Point(selectStart.X, selectStart.Y);
-					Point endnewpos = new Point(selectEnd.X, selectEnd.Y);
+					Point startnewpos = new Point(selectRegion.start.X, selectRegion.start.Y);
+					Point endnewpos = new Point(selectRegion.end.X, selectRegion.end.Y);
 					if (startprevpos != startnewpos || endprevpos != endnewpos)
 						UpdateXYSel();
 				}
@@ -1390,8 +1177,8 @@ namespace import
 				if (e.Button == MouseButtons.Left) //Create rectangle at position
 				{
 					XYDragSelect = 5;
-					selectStart = new Point3D<int>((int)(e.Location.X / XYImageZoom + XYStart.X), (int)(e.Location.Y / XYImageZoom + XYStart.Y + 1), selectStart.Z);
-					selectEnd = new Point3D<int>((int)(e.Location.X / XYImageZoom + XYStart.X), (int)(e.Location.Y / XYImageZoom + XYStart.Y + 1), selectEnd.Z);
+					selectRegion.start = new Point3D<int>((int)(e.Location.X / XYImageZoom + XYStart.X), (int)(e.Location.Y / XYImageZoom + XYStart.Y + 1), selectRegion.start.Z);
+					selectRegion.end = new Point3D<int>((int)(e.Location.X / XYImageZoom + XYStart.X), (int)(e.Location.Y / XYImageZoom + XYStart.Y + 1), selectRegion.end.Z);
 					UpdateSizeLabel();
 				}
 				else //Move view
@@ -1402,13 +1189,13 @@ namespace import
 			}
 
 			if (XYDragSelect == 1 || XYDragSelect == 2)
-				moveStartPos = new Point(selectStart.X, selectStart.Y);
+				moveStartPos = new Point(selectRegion.start.X, selectRegion.start.Y);
 			else if (XYDragSelect == 3 || XYDragSelect == 4)
-				moveStartPos = new Point(selectEnd.X, selectStart.Y);
+				moveStartPos = new Point(selectRegion.end.X, selectRegion.start.Y);
 			else if (XYDragSelect == 5 || XYDragSelect == 6)
-				moveStartPos = new Point(selectEnd.X, selectEnd.Y);
+				moveStartPos = new Point(selectRegion.end.X, selectRegion.end.Y);
 			else if (XYDragSelect == 7 || XYDragSelect == 8)
-				moveStartPos = new Point(selectStart.X, selectEnd.Y);
+				moveStartPos = new Point(selectRegion.start.X, selectRegion.end.Y);
 			moveStartMPos = e.Location;
 		}
 
@@ -1418,22 +1205,22 @@ namespace import
 				return;
 
 			XYDragView = 0;
-			if (selectStart.X > selectEnd.X)
+			if (selectRegion.start.X > selectRegion.end.X)
 			{
-				int tmp = selectStart.X;
-				selectStart.X = selectEnd.X;
-				selectEnd.X = tmp;
+				int tmp = selectRegion.start.X;
+				selectRegion.start.X = selectRegion.end.X;
+				selectRegion.end.X = tmp;
 			}
 
-			if (selectStart.Y > selectEnd.Y)
+			if (selectRegion.start.Y > selectRegion.end.Y)
 			{
-				int tmp = selectStart.Y;
-				selectStart.Y = selectEnd.Y;
-				selectEnd.Y = tmp;
+				int tmp = selectRegion.start.Y;
+				selectRegion.start.Y = selectRegion.end.Y;
+				selectRegion.end.Y = tmp;
 			}
 
 			XYDragSelect = 0;
-			XZImageMidPos = new Point(selectStart.X + (selectEnd.X - selectStart.X) / 2, selectStart.Z + (selectEnd.Z - selectStart.Z) / 2);
+			XZImageMidPos = new Point(selectRegion.start.X + (selectRegion.end.X - selectRegion.start.X) / 2, selectRegion.start.Z + (selectRegion.end.Z - selectRegion.start.Z) / 2);
 			UpdateXYSel();
 			UpdateXZMap();
 			UpdateSizeLabel();
@@ -1520,49 +1307,49 @@ namespace import
 				}
 				else // Change rectangle
 				{
-					Point startprevpos = new Point(selectStart.X, selectStart.Z);
-					Point endprevpos = new Point(selectEnd.X, selectEnd.Z);
+					Point startprevpos = new Point(selectRegion.start.X, selectRegion.start.Z);
+					Point endprevpos = new Point(selectRegion.end.X, selectRegion.end.Z);
 					if (XZDragSelect == 1) // LU
 					{
-						selectStart.X = moveStartPos.X + dx;
-						selectEnd.Z = moveStartPos.Y + dy;
+						selectRegion.start.X = moveStartPos.X + dx;
+						selectRegion.end.Z = moveStartPos.Y + dy;
 					}
 
 					if (XZDragSelect == 2) // U
-						selectEnd.Z = moveStartPos.Y + dy;
+						selectRegion.end.Z = moveStartPos.Y + dy;
 
 					if (XZDragSelect == 3) //RU
 					{
-						selectEnd.X = moveStartPos.X + dx;
-						selectEnd.Z = moveStartPos.Y + dy;
+						selectRegion.end.X = moveStartPos.X + dx;
+						selectRegion.end.Z = moveStartPos.Y + dy;
 					}
 
 					if (XZDragSelect == 4) // R
-						selectEnd.X = moveStartPos.X + dx;
+						selectRegion.end.X = moveStartPos.X + dx;
 
 					if (XZDragSelect == 5) // RD
 					{
-						selectEnd.X = moveStartPos.X + dx;
-						selectStart.Z = moveStartPos.Y + dy;
+						selectRegion.end.X = moveStartPos.X + dx;
+						selectRegion.start.Z = moveStartPos.Y + dy;
 					}
 
 					if (XZDragSelect == 6) // D
-						selectStart.Z = moveStartPos.Y + dy;
+						selectRegion.start.Z = moveStartPos.Y + dy;
 
 					if (XZDragSelect == 7) // LD
 					{
-						selectStart.X = moveStartPos.X + dx;
-						selectStart.Z = moveStartPos.Y + dy;
+						selectRegion.start.X = moveStartPos.X + dx;
+						selectRegion.start.Z = moveStartPos.Y + dy;
 					}
 
 					if (XZDragSelect == 8) // L
-						selectStart.X = moveStartPos.X + dx;
+						selectRegion.start.X = moveStartPos.X + dx;
 
-					selectStart.Z = Math.Max(Math.Min(selectStart.Z, 255), 0);
-					selectEnd.Z = Math.Max(Math.Min(selectEnd.Z, 255), 0);
+					selectRegion.start.Z = Math.Max(Math.Min(selectRegion.start.Z, 255), 0);
+					selectRegion.end.Z = Math.Max(Math.Min(selectRegion.end.Z, 255), 0);
 					UpdateSizeLabel();
-					Point startnewpos = new Point(selectStart.X, selectStart.Z);
-					Point endnewpos = new Point(selectEnd.X, selectEnd.Z);
+					Point startnewpos = new Point(selectRegion.start.X, selectRegion.start.Z);
+					Point endnewpos = new Point(selectRegion.end.X, selectRegion.end.Z);
 					if (startprevpos != startnewpos || endprevpos != endnewpos)
 						UpdateXZSel();
 				}
@@ -1592,10 +1379,10 @@ namespace import
 				if (e.Button == MouseButtons.Left) // Create rectangle at position
 				{
 					XZDragSelect = 5;
-					selectStart = new Point3D<int>((int)(e.Location.X / XZImageZoom + XZStart.X), selectStart.Y, (int)((pboxWorldXZ.Size.Height - e.Location.Y) / XZImageZoom + 1));
-					selectEnd = new Point3D<int>((int)(e.Location.X / XZImageZoom + XZStart.X), selectEnd.Y, (int)((pboxWorldXZ.Size.Height - e.Location.Y) / XZImageZoom + 1));
-					selectStart.Z = Math.Max(Math.Min(selectStart.Z, 255), 0);
-					selectEnd.Z = Math.Max(Math.Min(selectEnd.Z, 255), 0);
+					selectRegion.start = new Point3D<int>((int)(e.Location.X / XZImageZoom + XZStart.X), selectRegion.start.Y, (int)((pboxWorldXZ.Size.Height - e.Location.Y) / XZImageZoom + 1));
+					selectRegion.end = new Point3D<int>((int)(e.Location.X / XZImageZoom + XZStart.X), selectRegion.end.Y, (int)((pboxWorldXZ.Size.Height - e.Location.Y) / XZImageZoom + 1));
+					selectRegion.start.Z = Math.Max(Math.Min(selectRegion.start.Z, 255), 0);
+					selectRegion.end.Z = Math.Max(Math.Min(selectRegion.end.Z, 255), 0);
 					UpdateSizeLabel();
 				}
 				else //Move view
@@ -1606,16 +1393,16 @@ namespace import
 			}
 
 			if (XZDragSelect == 1 || XZDragSelect == 2)
-				moveStartPos = new Point(selectStart.X, selectEnd.Z);
+				moveStartPos = new Point(selectRegion.start.X, selectRegion.end.Z);
 
 			else if (XZDragSelect == 3 || XZDragSelect == 4)
-				moveStartPos = new Point(selectEnd.X, selectEnd.Z);
+				moveStartPos = new Point(selectRegion.end.X, selectRegion.end.Z);
 
 			else if (XZDragSelect == 5 || XZDragSelect == 6)
-				moveStartPos = new Point(selectEnd.X, selectStart.Z);
+				moveStartPos = new Point(selectRegion.end.X, selectRegion.start.Z);
 
 			else if (XZDragSelect == 7 || XZDragSelect == 8)
-				moveStartPos = new Point(selectStart.X, selectStart.Z);
+				moveStartPos = new Point(selectRegion.start.X, selectRegion.start.Z);
 
 			moveStartMPos = e.Location;
 		}
@@ -1626,18 +1413,18 @@ namespace import
 				return;
 
 			XZDragView = 0;
-			if (selectStart.X > selectEnd.X)
+			if (selectRegion.start.X > selectRegion.end.X)
 			{
-				int tmp = selectStart.X;
-				selectStart.X = selectEnd.X;
-				selectEnd.X = tmp;
+				int tmp = selectRegion.start.X;
+				selectRegion.start.X = selectRegion.end.X;
+				selectRegion.end.X = tmp;
 			}
 
-			if (selectStart.Z > selectEnd.Z)
+			if (selectRegion.start.Z > selectRegion.end.Z)
 			{
-				int tmp = selectStart.Z;
-				selectStart.Z = selectEnd.Z;
-				selectEnd.Z = tmp;
+				int tmp = selectRegion.start.Z;
+				selectRegion.start.Z = selectRegion.end.Z;
+				selectRegion.end.Z = tmp;
 			}
 
 			XZDragSelect = 0;

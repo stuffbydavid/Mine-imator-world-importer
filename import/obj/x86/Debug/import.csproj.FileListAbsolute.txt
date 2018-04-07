@@ -14,9 +14,9 @@ D:\Dropbox\Projects\Minecraft\Mine-imator\Import\import\bin\Debug\import.exe
 D:\Dropbox\Projects\Minecraft\Mine-imator\Import\import\bin\Debug\import.pdb
 D:\Dropbox\Projects\Minecraft\Mine-imator\Import\import\obj\x86\Debug\import.csprojResolveAssemblyReference.cache
 D:\Dropbox\Projects\Minecraft\Mine-imator\Import\import\obj\x86\Debug\import.frmFilters.resources
-D:\Dropbox\Projects\Minecraft\Mine-imator\Import\import\obj\x86\Debug\import.frmImport.resources
 D:\Dropbox\Projects\Minecraft\Mine-imator\Import\import\obj\x86\Debug\import.frmLoadingRegion.resources
 D:\Dropbox\Projects\Minecraft\Mine-imator\Import\import\obj\x86\Debug\import.Properties.Resources.resources
 D:\Dropbox\Projects\Minecraft\Mine-imator\Import\import\obj\x86\Debug\import.csproj.GenerateResource.Cache
 D:\Dropbox\Projects\Minecraft\Mine-imator\Import\import\obj\x86\Debug\import.exe
 D:\Dropbox\Projects\Minecraft\Mine-imator\Import\import\obj\x86\Debug\import.pdb
+D:\Dropbox\Projects\Minecraft\Mine-imator\Import\import\obj\x86\Debug\import.frmImport.resources

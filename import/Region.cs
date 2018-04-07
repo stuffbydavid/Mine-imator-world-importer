@@ -26,13 +26,12 @@ namespace import
 			isLoaded = false;
 		}
 
-		/// <summary>Loads the chunks of the region and processes the IDs/State IDs of the blocks.</summary>
-		public void Load()
+		/// <summary>Loads the chunks of the region. Returns whether successful.</summary>
+		public bool Load()
 		{
 			if (!File.Exists(filename))
-				return;
+				return false;
 
-			NBTReader nbt = new NBTReader();
 			frmLoadingRegion load = new frmLoadingRegion();
 			frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
 			load.Show();
@@ -66,31 +65,11 @@ namespace import
 						br.ReadByte();
 						br.ReadByte();
 
-						NBTCompound nbtChunk = nbt.Open(br.ReadBytes(clen - 6), DataFormat.ZLIB);
-						NBTCompound nbtLevel = (NBTCompound)nbtChunk.Get("Level");
-						NBTList nbtSections = (NBTList)nbtLevel.Get("Sections");
-
-						if (nbtSections == null || nbtSections.Length() == 0)
+						Chunk chunk = new Chunk(br.ReadBytes(clen - 6), blockFormat);
+						if (!chunk.Load())
 							continue;
 
-						int chunkX = nbtLevel.Get("xPos").value;
-						int chunkY = nbtLevel.Get("zPos").value;
-						Chunk chunk = new Chunk(chunkX , chunkY);
-						chunk.tileEntities = nbtLevel.Get("TileEntities");
-
-						// Process sections
-						for (int s = 0; s < nbtSections.Length(); s++)
-						{
-							NBTCompound nbtSection = (NBTCompound)nbtSections.Get(s);
-							Chunk.Section section = new Chunk.Section();
-							section.Load(nbtSection, blockFormat);
-
-							// Add section to chunk
-							int sectionZ = nbtSection.Get("Y").value;
-							chunk.sections[sectionZ] = section;
-						}
-
-						chunks[Util.ModNeg(chunkX, 32), Util.ModNeg(chunkY, 32)] = chunk;
+						chunks[Util.ModNeg(chunk.X, 32), Util.ModNeg(chunk.Y, 32)] = chunk;
 					}
 				}
 				isLoaded = true;
@@ -98,11 +77,14 @@ namespace import
 			catch (IOException)
 			{
 				MessageBox.Show(main.GetText("worldopened"));
+				return false;
 			}
 
 			load.Close();
 			GC.Collect();
 			GC.WaitForPendingFinalizers();
+
+			return true;
 		}
 
 		/// <summary>Clears the region of all chunks.</summary>
@@ -111,15 +93,6 @@ namespace import
 			for (int i = 0; i < 32; i++)
 				for (int j = 0; j < 32; j++)
 					chunks[i, j] = null;
-		}
-
-		/// <summary>Runs before saving a schematic.</summary>
-		public void SaveReset()
-		{
-			for (int i = 0; i < 32; i++)
-				for (int j = 0; j < 32; j++)
-					if (chunks[i, j] != null)
-						chunks[i, j].tileEntitiesAdded = false;
 		}
 	}
 }

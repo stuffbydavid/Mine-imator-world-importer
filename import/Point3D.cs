@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace import
+﻿namespace import
 {
 	public class Point3D<T>
 	{
@@ -18,6 +13,11 @@ namespace import
 		public override string ToString()
 		{
 			return X + "," + Y + "," + Z;
+		}
+
+		public Point3D<T> Copy()
+		{
+			return new Point3D<T>(X, Y, Z);
 		}
 	}
 }

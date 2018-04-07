@@ -40,10 +40,10 @@ namespace import
 			// Set texts
 			Text = import.GetText("filterstitle");
 			cbxActivate.Text = import.GetText("filtersactivate");
-			lblBlocksRemove.Text = import.GetText("filtersblocksremove");
-			rbtnRemove.Text = import.GetText("filtersremove");
-			rbtnKeep.Text = import.GetText("filterskeep");
-			rbtnKeep.Location = new Point(rbtnRemove.Location.X + rbtnRemove.Width + 20, rbtnKeep.Location.Y);
+			lblBlocksToRemove.Text = import.GetText("filtersblockstoremove");
+			rbtnRemoveBlocks.Text = import.GetText("filtersremovefiltered");
+			rbtnKeepFiltered.Text = import.GetText("filterskeepfiltered");
+			rbtnKeepFiltered.Location = new Point(rbtnRemoveBlocks.Location.X + rbtnRemoveBlocks.Width + 20, rbtnKeepFiltered.Location.Y);
 			btnAdd.Text = import.GetText("filtersadd");
 			btnRemove.Text = import.GetText("filtersremove");
 			btnOk.Text = import.GetText("filtersok");
@@ -64,8 +64,8 @@ namespace import
 
 			// Settings
 			cbxActivate.Checked = import.filterBlocksActive;
-			rbtnRemove.Checked = !import.filterBlocksInvert;
-			rbtnKeep.Checked = import.filterBlocksInvert;
+			rbtnRemoveBlocks.Checked = !import.filterBlocksInvert;
+			rbtnKeepFiltered.Checked = import.filterBlocksInvert;
 			panFilters.Enabled = cbxActivate.Checked;
 		}
 
@@ -107,7 +107,7 @@ namespace import
 			// Save filtered blocks to JSON
 			string json = "{\n";
 			json += "\t\"active\": " + (cbxActivate.Checked ? "true" : "false") + ",\n";
-			json += "\t\"invert\": " + (rbtnKeep.Checked ? "true" : "false") + ",\n";
+			json += "\t\"invert\": " + (rbtnKeepFiltered.Checked ? "true" : "false") + ",\n";
 			json += "\t\"blocks\": [\n";
 			for (int i = 0; i < import.filterBlockNames.Count; i++)
 				json += "\t\t\"" + import.filterBlockNames[i] + "\"" + (i < import.filterBlockNames.Count - 1 ? "," : "" ) + "\n";
@@ -117,18 +117,18 @@ namespace import
 			File.WriteAllText(frmImport.miBlockFilterFile, json);
 
 			import.filterBlocksActive = cbxActivate.Checked;
-			import.filterBlocksInvert = rbtnKeep.Checked;
+			import.filterBlocksInvert = rbtnKeepFiltered.Checked;
 			import.UpdateFilterBlocks();
 		}
 
-		private void rbtnKeep_CheckedChanged(object sender, EventArgs e)
+		private void rbtnRemoveFiltered_CheckedChanged(object sender, EventArgs e)
 		{
-			lblBlocksRemove.Text = import.GetText("filtersblockskeep");
+			lblBlocksToRemove.Text = import.GetText("filtersblockstoremove");
 		}
 
-		private void rbtnRemove_CheckedChanged(object sender, EventArgs e)
+		private void rbtnKeepFiltered_CheckedChanged(object sender, EventArgs e)
 		{
-			lblBlocksRemove.Text = import.GetText("filtersblocksremove");
+			lblBlocksToRemove.Text = import.GetText("filtersblockstokeep");
 		}
 
 		private void cbxBlocks_SelectedIndexChanged(object sender, EventArgs e)
