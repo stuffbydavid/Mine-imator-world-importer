@@ -90,7 +90,7 @@ namespace import
 
 		// Folders
 		public static string mcSaveFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\.minecraft\saves";
-		public static string currentFolder = @"D:\Dropbox\Projects\Minecraft\Mine-imator\Source\datafiles\Data";// Application.StartupPath; //
+		public static string currentFolder = @"D:\Dropbox\Projects\Minecraft\Mine-imator\Source\datafiles\Data";//Application.StartupPath; //
 		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.13.midata";
 		public static string miLangFile = currentFolder + @"\Languages\english.milanguage";
 		public static string miBlockPreviewFile = currentFolder + @"\blockpreview.midata";
@@ -627,7 +627,10 @@ namespace import
 		/// <param name="mcId">The Minecraft ID of the block to check.</param>
 		public bool IsBlockFiltered(string mcId)
 		{
-			if (filterBlocksActive && blockMcIdMap.ContainsKey(mcId) && filterBlockNames.Contains(blockMcIdMap[mcId].name))
+			if (!filterBlocksActive || !blockMcIdMap.ContainsKey(mcId))
+				return false;
+
+			if (filterBlockNames.Contains(blockMcIdMap[mcId].name))
 				return !filterBlocksInvert;
 
 			return filterBlocksInvert;
@@ -728,6 +731,9 @@ namespace import
 							if (blockPreviewKey == 0)
 								continue;
 
+							if (!section.IsBlockSaved(x, y, z))
+								continue;
+
 							Color blockColor = blockPreviewMap[blockPreviewKey].XYColor;
 							if (blockColor != Color.Transparent)
 							{
@@ -808,6 +814,9 @@ namespace import
 							if (blockPreviewKey == 0)
 								continue;
 
+							if (!section.IsBlockSaved(x, y, z))
+								continue;
+
 							Color blockColor = blockPreviewMap[blockPreviewKey].XZColor;
 							if (blockColor != Color.Transparent)
 							{
@@ -859,11 +868,21 @@ namespace import
 		public void UpdateFilterBlocks()
 		{
 			lblFilterInfo.Visible = (filterBlocksActive && (filterBlockNames.Count > 0 || filterBlocksInvert));
+
+			// Clear old images
+			world.ClearChunkImages();
+			GC.Collect();
+			GC.WaitForPendingFinalizers();
+
+			// Update
+			UpdateXYMap(0, 0);
+			UpdateXZMap();
 		}
 
 		/// <summary>Updates the bitmap of the XY map.</summary>
 		/// <param name="x">View movement along the x axis.</param>
 		/// <param name="y">View movement along the y axis.</param>
+		/// <param name="clear">Whether to clear all the old chunk images.</param>
 		private void UpdateXYMap(int x, int y)
 		{
 			if (world.filename == "")

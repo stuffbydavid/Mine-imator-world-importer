@@ -248,8 +248,8 @@ namespace import
 			TrimZp();
 			TrimZn();
 
-			int len = (tRegion.end.X - tRegion.start.X) + 1;
-			int wid = (tRegion.end.Y - tRegion.start.Y) + 1;
+			int len = (tRegion.end.Y - tRegion.start.Y) + 1;
+			int wid = (tRegion.end.X - tRegion.start.X) + 1;
 			int hei = (tRegion.end.Z - tRegion.start.Z) + 1;
 
 			// Create schematic
@@ -362,34 +362,10 @@ namespace import
 			if (sec == null)
 				return false;
 
-			frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
-
-			// Limit position to chunk section
 			int sx = Util.ModNeg(x, 16);
 			int sy = Util.ModNeg(y, 16);
 			int sz = z % 16;
-			string mcId;
-
-			if (blockFormat == BlockFormat.MODERN)
-			{
-				short palettePos = sec.blockPalettePos[sx, sy, sz];
-				if (palettePos == 0) // Air
-					return false;
-
-				mcId = sec.blockPaletteMcId[palettePos];
-			}
-			else
-			{
-				byte legacyId = sec.blockLegacyId[sx, sy, sz];
-				if (legacyId == 0) // Air
-					return false;
-
-				byte legacyData = sec.blockLegacyData[sx, sy, sz];
-				mcId = main.blockLegacyMcId[legacyId, legacyData];
-			}
-
-			// Check user filter settings
-			return !main.IsBlockFiltered(mcId);
+			return sec.IsBlockSaved(x, y, z);
 		}
 
 		/// <summary>Returns the region that contains all the blocks at x, y in the world.</summary>
@@ -448,7 +424,22 @@ namespace import
 			int sx = Util.ModNeg(x, 16);
 			int sy = Util.ModNeg(y, 16);
 			int sz = z % 16;
+
+			// Check if filtered
+			if (!sec.IsBlockSaved(sx, sy, sz))
+				return 0;
+
 			return sec.blockPreviewKey[sx, sy, sz];
+		}
+
+		/// <summary>Clears the images of all chunks.</summary>
+		public void ClearChunkImages()
+		{
+			foreach (Region reg in regionList)
+				for (int x = 0; x < 32; x++)
+					for (int y = 0; y < 32; y++)
+						if (reg.chunks[x, y] != null)
+							reg.chunks[x, y].XYImage = reg.chunks[x, y].XZImage = null;
 		}
 	}
 }

@@ -17,12 +17,14 @@ namespace import
 			public NBTCompound[] blockPaletteProperties;
 			public byte[,,] blockLegacyId;
 			public byte[,,] blockLegacyData;
+			public BlockFormat blockFormat;
 
 			/// <summary>Parses the blocks of the section from the given NBT structure and stores the data.</summary>
 			/// <param name="nbtSection">The NBT data of the section.</param>
 			/// <param name="blockFormat">The format of the blocks in the section.</param>
 			public void Load(NBTCompound nbtSection, BlockFormat blockFormat)
 			{
+				this.blockFormat = blockFormat;
 				frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
 
 				// 1.13 world format
@@ -107,6 +109,38 @@ namespace import
 						}
 					}
 				}
+			}
+
+			/// <summary>Returns whether the block at x, y, z in the section should be saved.</summary>
+			/// <param name="x">x value to check.</param>
+			/// <param name="y">y value to check.</param>
+			/// <param name="z">z value to check.</param>
+			public bool IsBlockSaved(int x, int y, int z)
+			{
+				frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
+
+				string mcId;
+
+				if (blockFormat == BlockFormat.MODERN)
+				{
+					short palettePos = blockPalettePos[x, y, z];
+					if (palettePos == 0) // Air
+						return false;
+
+					mcId = blockPaletteMcId[palettePos];
+				}
+				else
+				{
+					byte legacyId = blockLegacyId[x, y, z];
+					if (legacyId == 0) // Air
+						return false;
+
+					byte legacyData = blockLegacyData[x, y, z];
+					mcId = main.blockLegacyMcId[legacyId, legacyData];
+				}
+
+				// Check user filter settings
+				return !main.IsBlockFiltered(mcId);
 			}
 		}
 
