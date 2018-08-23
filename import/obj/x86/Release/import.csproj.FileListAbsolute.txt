@@ -20,3 +20,14 @@ D:\Dropbox\Projects\Minecraft\Mine-imator\Import\import\obj\x86\Release\import.p
 D:\Dropbox\Projects\Minecraft\Mine-imator\Import\import\bin\Release\import.exe.config
 D:\Dropbox\Projects\Minecraft\Mine-imator\Import\import\bin\Release\import.exe
 D:\Dropbox\Projects\Minecraft\Mine-imator\Import\import\bin\Release\import.pdb
+D:\Dropbox\Projects\Game Maker\Mine-imator\Import\import\bin\Release\import.exe.config
+D:\Dropbox\Projects\Game Maker\Mine-imator\Import\import\bin\Release\import.exe
+D:\Dropbox\Projects\Game Maker\Mine-imator\Import\import\bin\Release\import.pdb
+D:\Dropbox\Projects\Game Maker\Mine-imator\Import\import\obj\x86\Release\import.csprojResolveAssemblyReference.cache
+D:\Dropbox\Projects\Game Maker\Mine-imator\Import\import\obj\x86\Release\import.frmFilters.resources
+D:\Dropbox\Projects\Game Maker\Mine-imator\Import\import\obj\x86\Release\import.frmImport.resources
+D:\Dropbox\Projects\Game Maker\Mine-imator\Import\import\obj\x86\Release\import.frmLoadingRegion.resources
+D:\Dropbox\Projects\Game Maker\Mine-imator\Import\import\obj\x86\Release\import.Properties.Resources.resources
+D:\Dropbox\Projects\Game Maker\Mine-imator\Import\import\obj\x86\Release\import.csproj.GenerateResource.Cache
+D:\Dropbox\Projects\Game Maker\Mine-imator\Import\import\obj\x86\Release\import.exe
+D:\Dropbox\Projects\Game Maker\Mine-imator\Import\import\obj\x86\Release\import.pdb

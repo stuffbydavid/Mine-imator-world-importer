@@ -25,6 +25,8 @@ namespace import
 	public class World
 	{
 		public const short BLOCKFORMAT_MODERN_VERSION = 1451;
+		public const int SCHEMATIC_VERSION = 1;
+		public const int SCHEMATIC_CONTENT_VERSION = 0;
 
 		public string filename = "", name = "";
 		public BlockFormat blockFormat;
@@ -259,19 +261,35 @@ namespace import
 			schematic.Add(TagType.SHORT, "Length", len);
 			schematic.Add(TagType.SHORT, "Width", wid);
 			schematic.Add(TagType.SHORT, "Height", hei);
-			schematic.Add(TagType.STRING, "FromMap", name);
-			schematic.Add(TagType.STRING, "Materials", "Alpha");
 
+			NBTCompound palette = null;
+			int[] blockDataArray = null;
 			byte[] blockLegacyIdArray = null;
 			byte[] blockLegacyDataArray = null;
+
 			if (blockFormat == BlockFormat.MODERN)
 			{
-				// TODO: AFTER 1.13
-				// Check with WorldEdit & MCEdit
-				// https://minecraft.gamepedia.com/Schematic_file_format
+				// Use Sponge Schematic format
+				// https://github.com/SpongePowered/Schematic-Specification/blob/master/versions/schematic-1.md
+
+				schematic.Add(TagType.INT, "Version", SCHEMATIC_VERSION);
+
+				NBTCompound metaData = new NBTCompound();
+				metaData.Add(TagType.STRING, "FromMap", name);
+				schematic.AddTag("Metadata", metaData);
+
+				palette = new NBTCompound();
+				palette.Add(TagType.INT, "minecraft:air", 0);
+				blockDataArray = new int[len * wid * hei];
 			}
 			else
 			{
+				// Use legacy Schematic format
+				// https://minecraft.gamepedia.com/Schematic_file_format
+
+				schematic.Add(TagType.STRING, "FromMap", name);
+				schematic.Add(TagType.STRING, "Materials", "Alpha");
+
 				blockLegacyIdArray = new byte[len * wid * hei];
 				blockLegacyDataArray = new byte[len * wid * hei];
 			}
@@ -296,6 +314,8 @@ namespace import
 								int teX = comp.Get("x").value;
 								int teY = comp.Get("z").value;
 								int teZ = comp.Get("y").value;
+
+								// Check bounds
 								if (teX < tRegion.start.X || teX > tRegion.end.X ||
 									teY < tRegion.start.Y || teY > tRegion.end.Y ||
 									teZ < tRegion.start.Z || teZ > tRegion.end.Z)
@@ -303,9 +323,20 @@ namespace import
 
 								// Subtract by start position in a copy
 								NBTCompound newComp = (NBTCompound)comp.Copy();
-								newComp.Add(TagType.INT, "x", teX - tRegion.start.X);
-								newComp.Add(TagType.INT, "z", teY - tRegion.start.Y);
-								newComp.Add(TagType.INT, "y", teZ - tRegion.start.Z);
+								int[] posArr = { teX - tRegion.start.X, teY - tRegion.start.Y, teZ - tRegion.start.Z };
+
+								if (blockFormat == BlockFormat.MODERN)
+								{
+									newComp.Add(TagType.INT, "ContentVersion", SCHEMATIC_CONTENT_VERSION);
+									newComp.Add(TagType.INT_ARRAY, "Pos", posArr);
+								}
+								else
+								{
+									newComp.Add(TagType.INT, "x", posArr[0]);
+									newComp.Add(TagType.INT, "z", posArr[1]);
+									newComp.Add(TagType.INT, "y", posArr[2]);
+								}
+
 								tileEntities.Add(newComp);
 							}
 
@@ -323,12 +354,34 @@ namespace import
 
 						if (blockFormat == BlockFormat.MODERN)
 						{
-							// TODO
+							short sectionPalettePos = section.blockPalettePos[sx, sy, sz];
+							string sectionMcId = section.blockPaletteMcId[sectionPalettePos];
+							NBTCompound sectionPaletteProperties = section.blockPaletteProperties[sectionPalettePos];
+
+							// Construct ID:[properties] key
+							string key = sectionMcId;
+							if (sectionPaletteProperties != null)
+								key += sectionPaletteProperties;
+
+							// Find or create palette index
+							NBTTag indexTag = palette.Get(key);
+							int index;
+							if (indexTag == null)
+							{
+								index = palette.Count();
+								palette.Add(TagType.INT, key, index);
+							}
+							else
+								index = indexTag.value;
+
+							blockDataArray[pos] = (int)index;
 						}
 						else
 						{
 							byte legacyId = section.blockLegacyId[sx, sy, sz];
 							blockLegacyIdArray[pos] = legacyId;
+
+							// Not air
 							if (legacyId > 0)
 								blockLegacyDataArray[pos] = section.blockLegacyData[sx, sy, sz];
 						}
@@ -340,7 +393,23 @@ namespace import
 
 			if (blockFormat == BlockFormat.MODERN)
 			{
-				// TODO
+				schematic.AddTag("Palette", palette);
+				if (palette.Count() > byte.MaxValue)
+				{
+					// Int array
+					schematic.Add(TagType.INT, "PaletteMax", palette.Count() * 4);
+					schematic.Add(TagType.INT_ARRAY, "BlockData", blockDataArray);
+				}
+				else
+				{
+					// Byte array
+					byte[] byteArr = new byte[blockDataArray.Count()];
+					for (int i = 0; i < blockDataArray.Count(); i++)
+						byteArr[i] = (byte)blockDataArray[i];
+
+					schematic.Add(TagType.INT, "PaletteMax", palette.Count());
+					schematic.Add(TagType.BYTE_ARRAY, "BlockData", byteArr);
+				}
 			}
 			else
 			{
@@ -365,7 +434,7 @@ namespace import
 			int sx = Util.ModNeg(x, 16);
 			int sy = Util.ModNeg(y, 16);
 			int sz = z % 16;
-			return sec.IsBlockSaved(x, y, z);
+			return sec.IsBlockSaved(sx, sy, sz);
 		}
 
 		/// <summary>Returns the region that contains all the blocks at x, y in the world.</summary>

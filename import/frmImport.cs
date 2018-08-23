@@ -90,7 +90,7 @@ namespace import
 
 		// Folders
 		public static string mcSaveFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\.minecraft\saves";
-		public static string currentFolder = @"D:\Dropbox\Projects\Minecraft\Mine-imator\Source\datafiles\Data";//Application.StartupPath; //
+		public static string currentFolder = @"D:\Dropbox\Projects\Game Maker\Mine-imator\Source\datafiles\Data";//Application.StartupPath; //
 		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.13.midata";
 		public static string miLangFile = currentFolder + @"\Languages\english.milanguage";
 		public static string miBlockPreviewFile = currentFolder + @"\blockpreview.midata";
@@ -1170,7 +1170,7 @@ namespace import
 					if (startprevpos != startnewpos || endprevpos != endnewpos)
 						UpdateXYSel();
 				}
-			} //#YOLO
+			}
 
 			// Set cursor image
 			if (XYDragSelect == 4 || XYDragSelect == 8)

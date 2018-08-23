@@ -45,6 +45,11 @@ namespace import
 		{
 			return new NBTTag(type, value);
 		}
+
+		public override string ToString()
+		{
+			return value.ToString();
+		}
 	}
 
 	/// <summary>A NBT list</summary>
@@ -79,6 +84,19 @@ namespace import
 				newList.value.Add(tag.Copy());
 			return newList;
 		}
+
+		public override string ToString()
+		{
+			string str = "";
+			foreach (NBTTag tag in value)
+			{
+				if (str != "")
+					str += ",";
+
+				str += tag;
+			}
+			return "[" + str + "]";
+		}
 	}
 
 	/// <summary>A NBT compound</summary>
@@ -98,6 +116,11 @@ namespace import
 			value[name] = new NBTTag(type, val);
 		}
 
+		public int Count()
+		{
+			return value.Count;
+		}
+
 		public dynamic Get(string name)
 		{
 			if (!value.ContainsKey(name))
@@ -112,6 +135,19 @@ namespace import
 			foreach (KeyValuePair<string, NBTTag> key in value)
 				newComp.AddTag(key.Key, key.Value.Copy());
 			return newComp;
+		}
+
+		public override string ToString()
+		{
+			string str = "";
+			foreach (KeyValuePair<string, NBTTag> key in value)
+			{
+				if (str != "")
+					str += ",";
+
+				str += key.Key + "=" + key.Value;
+			}
+			return "[" + str + "]";
 		}
 	}
 
