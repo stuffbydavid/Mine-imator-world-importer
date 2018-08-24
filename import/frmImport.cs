@@ -90,7 +90,7 @@ namespace import
 
 		// Folders
 		public static string mcSaveFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\.minecraft\saves";
-		public static string currentFolder = @"D:\Dropbox\Projects\Game Maker\Mine-imator\Source\datafiles\Data";//Application.StartupPath; //
+		public static string currentFolder = Application.StartupPath; // @"D:\Dropbox\Projects\Game Maker\Mine-imator\Source\datafiles\Data";//
 		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.13.midata";
 		public static string miLangFile = currentFolder + @"\Languages\english.milanguage";
 		public static string miBlockPreviewFile = currentFolder + @"\blockpreview.midata";
@@ -1014,7 +1014,7 @@ namespace import
 			int screenwid = pboxWorldXZ.Width, screenhei = pboxWorldXZ.Height;
 			XZBlocksWidth = (int)(screenwid / XZImageZoom) + 1;
 			XZBlocksHeight = (int)(screenhei / XZImageZoom) + 1;
-			XZStart = new Point((int)Math.Floor(XZImageMidPos.X - (screenwid / XZImageZoom) / 2), 0);
+			XZStart = new Point((int)Math.Floor(XZImageMidPos.X - (screenwid / XZImageZoom) / 2), (int)Math.Floor(XZImageMidPos.Y - (screenhei / XZImageZoom) / 2));
 			Bitmap bmp = new Bitmap(XZBlocksWidth, 256);
 
 			// Find chunks and draw them
@@ -1045,13 +1045,13 @@ namespace import
 		{
 			int sx = Math.Min(selectRegion.start.X, selectRegion.end.X), sz = Math.Min(selectRegion.start.Z, selectRegion.end.Z);
 			int ex = Math.Max(selectRegion.start.X, selectRegion.end.X), ez = Math.Max(selectRegion.start.Z, selectRegion.end.Z);
-			XZSelectStartDraw = new Point((int)((sx - XZStart.X) * XZImageZoom - XZImageZoom / 2), pboxWorldXZ.Size.Height - Math.Max(1, (int)(ez * XZImageZoom + XZImageZoom / 2)));
-			XZSelectEndDraw = new Point((int)((ex - XZStart.X) * XZImageZoom + XZImageZoom / 2), pboxWorldXZ.Size.Height - Math.Max(1, (int)(sz * XZImageZoom - XZImageZoom / 2)));
+			XZSelectStartDraw = new Point((int)((sx - XZStart.X) * XZImageZoom - XZImageZoom / 2), pboxWorldXZ.Size.Height - Math.Max(1, (int)((ez - XZStart.Y) * XZImageZoom + XZImageZoom / 2)));
+			XZSelectEndDraw = new Point((int)((ex - XZStart.X) * XZImageZoom + XZImageZoom / 2), pboxWorldXZ.Size.Height - Math.Max(1, (int)((sz - XZStart.Y)* XZImageZoom - XZImageZoom / 2)));
 			XZSelectBitmap.Dispose();
 			XZSelectBitmap = new Bitmap(pboxWorldXZ.Width, pboxWorldXZ.Height);
 			using (Graphics g = Graphics.FromImage(XZSelectBitmap))
-			using (Pen p = new Pen(Color.White, 2))
-				g.DrawRectangle(p, XZSelectStartDraw.X, XZSelectStartDraw.Y, XZSelectEndDraw.X - XZSelectStartDraw.X, XZSelectEndDraw.Y - XZSelectStartDraw.Y);
+				using (Pen p = new Pen(Color.White, 2))
+					g.DrawRectangle(p, XZSelectStartDraw.X, XZSelectStartDraw.Y, XZSelectEndDraw.X - XZSelectStartDraw.X, XZSelectEndDraw.Y - XZSelectStartDraw.Y);
 			UpdateXZPicBox();
 		}
 
@@ -1070,10 +1070,12 @@ namespace import
 					map = XZMapBitmap;
 				else
 					map = Util.ResizeBitmap(XZMapBitmap, (int)(XZMapBitmap.Width * XZImageZoom), (int)(256 * XZImageZoom));
-				g.DrawImage(map, 0, pboxWorldXZ.Height + XZImageZoom - map.Height);
+
+				int yoff = XZImageMidPos.Y - 128;
+				g.DrawImage(map, 0, pboxWorldXZ.Height / 2 - map.Height / 2 + yoff * XZImageZoom);
 				g.DrawImage(XZSelectBitmap, 0, 0);
-				g.DrawImage(spawnImage, (int)((world.spawnPos.X - XZStart.X) * XZImageZoom) - 8, (int)(pboxWorldXZ.Height - world.spawnPos.Z * XZImageZoom) - 8);
-				g.DrawImage(playerImage, (int)(((int)world.playerPos.X - XZStart.X) * XZImageZoom) - 8, (int)(pboxWorldXZ.Height - world.playerPos.Z * XZImageZoom) - 8);
+				g.DrawImage(spawnImage, (int)((world.spawnPos.X - XZStart.X) * XZImageZoom) - 8, pboxWorldXZ.Height - (int)((world.spawnPos.Z - XZStart.Y) * XZImageZoom) - 8);
+				g.DrawImage(playerImage, (int)((world.playerPos.X - XZStart.X) * XZImageZoom) - 8, pboxWorldXZ.Height - (int)((world.playerPos.Z - XZStart.Y) * XZImageZoom) - 8);
 			}
 		}
 
@@ -1319,7 +1321,7 @@ namespace import
 				if (XZDragView == 1) // Move XZ view
 				{
 					Point prevpos = new Point(XZImageMidPos.X, XZImageMidPos.Y);
-					XZImageMidPos = new Point(moveStartPos.X - dx, moveStartPos.Y - dy);
+					XZImageMidPos = new Point(moveStartPos.X - dx, (moveStartPos.Y - dy));
 					Point newpos = new Point(XZImageMidPos.X, XZImageMidPos.Y);
 					if (prevpos != newpos)
 						UpdateXZMap();
@@ -1398,8 +1400,8 @@ namespace import
 				if (e.Button == MouseButtons.Left) // Create rectangle at position
 				{
 					XZDragSelect = 5;
-					selectRegion.start = new Point3D<int>((int)(e.Location.X / XZImageZoom + XZStart.X), selectRegion.start.Y, (int)((pboxWorldXZ.Size.Height - e.Location.Y) / XZImageZoom + 1));
-					selectRegion.end = new Point3D<int>((int)(e.Location.X / XZImageZoom + XZStart.X), selectRegion.end.Y, (int)((pboxWorldXZ.Size.Height - e.Location.Y) / XZImageZoom + 1));
+					selectRegion.start = new Point3D<int>((int)(e.Location.X / XZImageZoom + XZStart.X), selectRegion.start.Y, (int)((pboxWorldXZ.Size.Height - e.Location.Y) / XZImageZoom + XZStart.Y + 1));
+					selectRegion.end = new Point3D<int>((int)(e.Location.X / XZImageZoom + XZStart.X), selectRegion.end.Y, (int)((pboxWorldXZ.Size.Height - e.Location.Y) / XZImageZoom + XZStart.Y  + 1));
 					selectRegion.start.Z = Math.Max(Math.Min(selectRegion.start.Z, 255), 0);
 					selectRegion.end.Z = Math.Max(Math.Min(selectRegion.end.Z, 255), 0);
 					UpdateSizeLabel();

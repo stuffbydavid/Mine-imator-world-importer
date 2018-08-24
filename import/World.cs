@@ -323,7 +323,7 @@ namespace import
 
 								// Subtract by start position in a copy
 								NBTCompound newComp = (NBTCompound)comp.Copy();
-								int[] posArr = { teX - tRegion.start.X, teY - tRegion.start.Y, teZ - tRegion.start.Z };
+								int[] posArr = { teX - tRegion.start.X, teZ - tRegion.start.Z, teY - tRegion.start.Y };
 
 								if (blockFormat == BlockFormat.MODERN)
 								{
@@ -333,8 +333,8 @@ namespace import
 								else
 								{
 									newComp.Add(TagType.INT, "x", posArr[0]);
-									newComp.Add(TagType.INT, "z", posArr[1]);
-									newComp.Add(TagType.INT, "y", posArr[2]);
+									newComp.Add(TagType.INT, "y", posArr[1]);
+									newComp.Add(TagType.INT, "z", posArr[2]);
 								}
 
 								tileEntities.Add(newComp);
@@ -374,7 +374,7 @@ namespace import
 							else
 								index = indexTag.value;
 
-							blockDataArray[pos] = (int)index;
+							blockDataArray[pos] = index;
 						}
 						else
 						{
