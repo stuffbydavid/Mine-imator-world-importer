@@ -311,6 +311,7 @@ namespace import
 							foreach (NBTTag tag in chunk.tileEntities.value)
 							{
 								NBTCompound comp = (NBTCompound)tag;
+								string teId = comp.Get("id").value;
 								int teX = comp.Get("x").value;
 								int teY = comp.Get("z").value;
 								int teZ = comp.Get("y").value;
@@ -327,7 +328,13 @@ namespace import
 
 								if (blockFormat == BlockFormat.MODERN)
 								{
+									newComp.Remove("id");
+									newComp.Remove("x");
+									newComp.Remove("y");
+									newComp.Remove("z");
+
 									newComp.Add(TagType.INT, "ContentVersion", SCHEMATIC_CONTENT_VERSION);
+									newComp.Add(TagType.STRING, "Id", teId);
 									newComp.Add(TagType.INT_ARRAY, "Pos", posArr);
 								}
 								else

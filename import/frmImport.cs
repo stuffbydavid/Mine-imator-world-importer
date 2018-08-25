@@ -90,7 +90,11 @@ namespace import
 
 		// Folders
 		public static string mcSaveFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\.minecraft\saves";
-		public static string currentFolder = Application.StartupPath; // @"D:\Dropbox\Projects\Game Maker\Mine-imator\Source\datafiles\Data";//
+#if DEBUG
+		public static string currentFolder = @"D:\Dropbox\Projects\Game Maker\Mine-imator\Source\datafiles\Data";
+#else
+		public static string currentFolder = Application.StartupPath;
+#endif
 		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.13.midata";
 		public static string miLangFile = currentFolder + @"\Languages\english.milanguage";
 		public static string miBlockPreviewFile = currentFolder + @"\blockpreview.midata";
@@ -590,10 +594,6 @@ namespace import
 			// Find the current Mine-imator block from the Minecraft ID
 			Block block = blockMcIdMap[mcId];
 
-			// No variables supplied, a single state is assumed, return it.
-			if (vars == null)
-				return block.stateIdPreviewKey[0];
-
 			// Combine with the variables of the block's Minecraft ID
 			Vars finalVars = new Vars();
 
@@ -603,7 +603,8 @@ namespace import
 			if (block.mcIdVarsMap[mcId] != null)
 				VarsAdd(ref finalVars, block.mcIdVarsMap[mcId]);
 
-			VarsAdd(ref finalVars, vars);
+			if (vars != null)
+				VarsAdd(ref finalVars, vars);
 
 			// Calculate state ID of the block and get final preview key
 			ushort stateId = 0;

@@ -66,7 +66,12 @@ namespace import
 		{
 			value.Add(val);
 		}
-		
+
+		public void Remove(int index)
+		{
+			((List<NBTTag>)value).RemoveAt(index);
+		}
+
 		public int Length()
 		{
 			return value.Count;
@@ -114,6 +119,11 @@ namespace import
 		public void Add(TagType type, string name, dynamic val)
 		{
 			value[name] = new NBTTag(type, val);
+		}
+
+		public void Remove(string name)
+		{
+			((Dictionary<string, NBTTag>)value).Remove(name);
 		}
 
 		public int Count()
