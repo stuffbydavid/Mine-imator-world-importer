@@ -283,7 +283,7 @@ namespace import
 		{
 			WriteShortBE((short)val.Length);
 			for (int i = 0; i < val.Length; i++)
-				outStream.WriteByte(Convert.ToByte(val[i]));
+				outStream.WriteByte(Convert.ToByte((byte)val[i]));
 		}
 
 		private void WriteShortBE(short val)

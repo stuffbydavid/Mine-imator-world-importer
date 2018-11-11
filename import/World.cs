@@ -361,6 +361,13 @@ namespace import
 
 						if (blockFormat == BlockFormat.MODERN)
 						{
+							// Check filter
+							if (!section.IsBlockSaved(sx, sy, sz))
+							{
+								blockDataArray[pos] = 0;
+								continue;
+							}
+
 							short sectionPalettePos = section.blockPalettePos[sx, sy, sz];
 							string sectionMcId = section.blockPaletteMcId[sectionPalettePos];
 							NBTCompound sectionPaletteProperties = section.blockPaletteProperties[sectionPalettePos];
@@ -385,6 +392,13 @@ namespace import
 						}
 						else
 						{
+							// Check filter
+							if (!section.IsBlockSaved(sx, sy, sz))
+							{
+								blockLegacyIdArray[pos] = 0;
+								continue;
+							}
+
 							byte legacyId = section.blockLegacyId[sx, sy, sz];
 							blockLegacyIdArray[pos] = legacyId;
 

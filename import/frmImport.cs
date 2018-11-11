@@ -95,7 +95,7 @@ namespace import
 #else
 		public static string currentFolder = Application.StartupPath;
 #endif
-		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.13.midata";
+		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.13.1.midata";
 		public static string miLangFile = currentFolder + @"\Languages\english.milanguage";
 		public static string miBlockPreviewFile = currentFolder + @"\blockpreview.midata";
 		public static string miBlockFilterFile = currentFolder + @"\blockfilter.midata";
