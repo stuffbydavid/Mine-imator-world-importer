@@ -91,11 +91,11 @@ namespace import
 		// Folders
 		public static string mcSaveFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\.minecraft\saves";
 #if DEBUG
-		public static string currentFolder = @"D:\Dropbox\Projects\Game Maker\Mine-imator\Source\datafiles\Data";
+		public static string currentFolder = @"C:\Dev\Mine-imator\datafiles\Data";
 #else
 		public static string currentFolder = Application.StartupPath;
 #endif
-		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.13.1.midata";
+		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.17.1.midata";
 		public static string miLangFile = currentFolder + @"\Languages\english.milanguage";
 		public static string miBlockPreviewFile = currentFolder + @"\blockpreview.midata";
 		public static string miBlockFilterFile = currentFolder + @"\blockfilter.midata";
@@ -157,7 +157,9 @@ namespace import
 
 		private void frmImport_Load(object sender, EventArgs e)
 		{
-			if (!File.Exists(miLangFile))
+            LoadSettings(miSettingsFile);
+
+            if (!File.Exists(miLangFile))
 			{
 				MessageBox.Show("Could not find translation file, re-install the program.");
 				Application.Exit();
@@ -185,7 +187,6 @@ namespace import
 				return;
 			}
 
-			LoadSettings(miSettingsFile);
 			LoadLanguage(miLangFile);
 			LoadBlockPreviews(miBlockPreviewFile);
 			LoadBlocks(mcAssetsFile);
@@ -426,6 +427,10 @@ namespace import
 							for (var i = 0; i < stateIdAmount; i++)
 							{
 								var val = Util.IntDiv(i, state.id);
+
+								// Fill in states that may not have a preview key
+								val = (val % state.valueNameMap.Count);
+
 								if (val == value.id)
 									block.stateIdPreviewKey[i] = value.previewKey;
 							}
@@ -654,8 +659,8 @@ namespace import
 				XYImageZoom = 8;
 				selectRegion.start = new Point3D<int>((int)world.playerPos.X - 10, (int)world.playerPos.Y - 10, (int)world.playerPos.Z - 10);
 				selectRegion.end = new Point3D<int>((int)world.playerPos.X + 10, (int)world.playerPos.Y + 10, (int)world.playerPos.Z + 10);
-				selectRegion.start.Z = Math.Max(Math.Min(selectRegion.start.Z, 255), 0);
-				selectRegion.end.Z = Math.Max(Math.Min(selectRegion.end.Z, 255), 0);
+				selectRegion.start.Z = Math.Max(Math.Min(selectRegion.start.Z, 319), -64);
+				selectRegion.end.Z = Math.Max(Math.Min(selectRegion.end.Z, 319), -64);
 				UpdateSizeLabel();
 				btnDone.Enabled = true;
 				XZImageMidPos = new Point(selectRegion.start.X + (selectRegion.end.X - selectRegion.start.X) / 2, selectRegion.start.Z + (selectRegion.end.Z - selectRegion.start.Z) / 2);
@@ -720,7 +725,8 @@ namespace import
 				for (int y = 0; y < 16; y++)
 				{
 					Color finalColor = Color.Transparent;
-					for (int s = 15; s >= 0; s--)
+
+					for (int s = 24; s >= 0; s--)
 					{
 						Chunk.Section section = chunk.sections[s];
 						if (section == null)
@@ -795,12 +801,12 @@ namespace import
 			if (chunk.XZImage != null)
 				return chunk.XZImage.Image;
 
-			chunk.XZImage = new FastBitmap(16, 256);
+			chunk.XZImage = new FastBitmap(16, 384);
 			chunk.XZImage.LockImage();
 
 			for (int x = 0; x < 16; x++)
 			{
-				for (int s = 15; s >= 0; s--)
+				for (int s = 24; s >= 0; s--)
 				{
 					Chunk.Section section = chunk.sections[s];
 					if (section == null)
@@ -1016,7 +1022,7 @@ namespace import
 			XZBlocksWidth = (int)(screenwid / XZImageZoom) + 1;
 			XZBlocksHeight = (int)(screenhei / XZImageZoom) + 1;
 			XZStart = new Point((int)Math.Floor(XZImageMidPos.X - (screenwid / XZImageZoom) / 2), (int)Math.Floor(XZImageMidPos.Y - (screenhei / XZImageZoom) / 2));
-			Bitmap bmp = new Bitmap(XZBlocksWidth, 256);
+			Bitmap bmp = new Bitmap(XZBlocksWidth, 384);
 
 			// Find chunks and draw them
 			using (Graphics g = Graphics.FromImage(bmp))
@@ -1030,7 +1036,7 @@ namespace import
 						if (chunk != null)
 						{
 							Bitmap img = GetChunkXZImage(chunk);
-							g.DrawImage(img, chunk.X * 16 - XZStart.X, 256 - img.Height);
+							g.DrawImage(img, chunk.X * 16 - XZStart.X, 384 - img.Height);
 						}
 					}
 				}
@@ -1070,7 +1076,7 @@ namespace import
 				if (XZImageZoom == 1)
 					map = XZMapBitmap;
 				else
-					map = Util.ResizeBitmap(XZMapBitmap, (int)(XZMapBitmap.Width * XZImageZoom), (int)(256 * XZImageZoom));
+					map = Util.ResizeBitmap(XZMapBitmap, (int)(XZMapBitmap.Width * XZImageZoom), (int)(384 * XZImageZoom));
 
 				int yoff = XZImageMidPos.Y - 128;
 				g.DrawImage(map, 0, pboxWorldXZ.Height / 2 - map.Height / 2 + yoff * XZImageZoom);
@@ -1276,7 +1282,7 @@ namespace import
 			UpdateXYMap(0, 0);
 		}
 
-		private void ResizeXY(object sender, EventArgs e)
+        private void ResizeXY(object sender, EventArgs e)
 		{
 			UpdateXYMap(0, 0);
 		}
@@ -1367,8 +1373,8 @@ namespace import
 					if (XZDragSelect == 8) // L
 						selectRegion.start.X = moveStartPos.X + dx;
 
-					selectRegion.start.Z = Math.Max(Math.Min(selectRegion.start.Z, 255), 0);
-					selectRegion.end.Z = Math.Max(Math.Min(selectRegion.end.Z, 255), 0);
+					selectRegion.start.Z = Math.Max(Math.Min(selectRegion.start.Z, 319), -64);
+					selectRegion.end.Z = Math.Max(Math.Min(selectRegion.end.Z, 319), -64);
 					UpdateSizeLabel();
 					Point startnewpos = new Point(selectRegion.start.X, selectRegion.start.Z);
 					Point endnewpos = new Point(selectRegion.end.X, selectRegion.end.Z);
@@ -1403,8 +1409,8 @@ namespace import
 					XZDragSelect = 5;
 					selectRegion.start = new Point3D<int>((int)(e.Location.X / XZImageZoom + XZStart.X), selectRegion.start.Y, (int)((pboxWorldXZ.Size.Height - e.Location.Y) / XZImageZoom + XZStart.Y + 1));
 					selectRegion.end = new Point3D<int>((int)(e.Location.X / XZImageZoom + XZStart.X), selectRegion.end.Y, (int)((pboxWorldXZ.Size.Height - e.Location.Y) / XZImageZoom + XZStart.Y  + 1));
-					selectRegion.start.Z = Math.Max(Math.Min(selectRegion.start.Z, 255), 0);
-					selectRegion.end.Z = Math.Max(Math.Min(selectRegion.end.Z, 255), 0);
+					selectRegion.start.Z = Math.Max(Math.Min(selectRegion.start.Z, 319), -64);
+					selectRegion.end.Z = Math.Max(Math.Min(selectRegion.end.Z, 319), -64);
 					UpdateSizeLabel();
 				}
 				else //Move view

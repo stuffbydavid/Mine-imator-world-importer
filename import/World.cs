@@ -14,23 +14,35 @@ namespace import
 		END = 1
 	}
 
-	/// <summary>Minecraft block format.</summary>
-	public enum BlockFormat
-	{
-		LEGACY = 0,
-		MODERN = 1
-	}
+    /// <summary>Minecraft block format.</summary>
+    public enum BlockFormat
+    {
+        LEGACY = 0,
+        MODERN = 1,
+		CAVES_CLIFFS = 2
+    }
 
-	/// <summary>A Minecraft world, represented as a collection or regions containing 32x32 chunks.</summary>
-	public class World
+    /// <summary>Minecraft chunk storage format.</summary>
+    public enum StorageFormat
+    {
+        LEGACY = 0,
+        MODERN = 1
+    }
+
+    /// <summary>A Minecraft world, represented as a collection or regions containing 32x32 chunks.</summary>
+    public class World
 	{
 		public const short BLOCKFORMAT_MODERN_VERSION = 1451;
-		public const int SCHEMATIC_VERSION = 1;
+		public const short BLOCKFORMAT_CAVESCLIFFS_VERSION = 2838;
+		public const short STORAGEFORMAT_MODERN = 2529;
+
+        public const int SCHEMATIC_VERSION = 1;
 		public const int SCHEMATIC_CONTENT_VERSION = 0;
 
 		public string filename = "", name = "";
 		public BlockFormat blockFormat;
-		public Point3D<int> spawnPos = new Point3D<int>(0, 0, 0);
+        public StorageFormat storageFormat;
+        public Point3D<int> spawnPos = new Point3D<int>(0, 0, 0);
 		public Point3D<double> playerPos = new Point3D<double>(0, 0, 0);
 		List<Region> regionList = new List<Region>();
 		public Region[,] regions;
@@ -71,13 +83,21 @@ namespace import
 				regionFolder += @"\DIM" + (int)dim + @"\region";
 		
 			// Determine block format
-			if (versionId >= BLOCKFORMAT_MODERN_VERSION)
+			if (versionId >= BLOCKFORMAT_CAVESCLIFFS_VERSION)
+				blockFormat = BlockFormat.CAVES_CLIFFS;
+			else if (versionId >= BLOCKFORMAT_MODERN_VERSION)
 				blockFormat = BlockFormat.MODERN;
 			else
 				blockFormat = BlockFormat.LEGACY;
 
-			// Set name
-			FileInfo info = new FileInfo(filename);
+            // Determine storage format
+            if (versionId >= STORAGEFORMAT_MODERN)
+                storageFormat = StorageFormat.MODERN;
+            else
+                storageFormat = StorageFormat.LEGACY;
+
+            // Set name
+            FileInfo info = new FileInfo(filename);
 			this.filename = filename;
 			name = info.Directory.Name;
 
@@ -108,7 +128,7 @@ namespace import
 			spawnPos.Z = nbtData.Get("SpawnY").value;
 
 			// Player position from player.dat
-			if (blockFormat == BlockFormat.MODERN)
+			if (blockFormat >= BlockFormat.MODERN)
 			{
 				string playerFolder = new FileInfo(filename).DirectoryName + @"\playerdata";
 				FileInfo[] playerFiles = new DirectoryInfo(playerFolder).GetFiles("*.dat");
@@ -165,7 +185,7 @@ namespace import
 					minRegionX = rx; minRegionY = ry;
 					maxRegionX = rx; maxRegionY = ry;
 				}
-				regionList.Add(new Region(reg.FullName, blockFormat, rx, ry));
+				regionList.Add(new Region(reg.FullName, blockFormat, storageFormat, rx, ry));
 			}
 
 			// Construct array of regions for lookup
@@ -267,7 +287,7 @@ namespace import
 			byte[] blockLegacyIdArray = null;
 			byte[] blockLegacyDataArray = null;
 
-			if (blockFormat == BlockFormat.MODERN)
+			if (blockFormat >= BlockFormat.MODERN)
 			{
 				// Use Sponge Schematic format
 				// https://github.com/SpongePowered/Schematic-Specification/blob/master/versions/schematic-1.md
@@ -326,7 +346,7 @@ namespace import
 								NBTCompound newComp = (NBTCompound)comp.Copy();
 								int[] posArr = { teX - tRegion.start.X, teZ - tRegion.start.Z, teY - tRegion.start.Y };
 
-								if (blockFormat == BlockFormat.MODERN)
+								if (blockFormat >= BlockFormat.MODERN)
 								{
 									newComp.Remove("id");
 									newComp.Remove("x");
@@ -350,16 +370,16 @@ namespace import
 							chunk.tileEntitiesSaved = true;
 						}
 
-						Chunk.Section section = chunk.sections[z / 16];
+						Chunk.Section section = chunk.sections[(z + 64) / 16];
 						if (section == null)
 							continue;
 
 						// Position within current chunk section
 						int sx = Util.ModNeg(x, 16);
 						int sy = Util.ModNeg(y, 16);
-						int sz = z % 16;
+						int sz = Util.ModNeg(z, 16);
 
-						if (blockFormat == BlockFormat.MODERN)
+						if (blockFormat >= BlockFormat.MODERN)
 						{
 							// Check filter
 							if (!section.IsBlockSaved(sx, sy, sz))
@@ -412,7 +432,7 @@ namespace import
 
 			schematic.AddTag("TileEntities", tileEntities);
 
-			if (blockFormat == BlockFormat.MODERN)
+			if (blockFormat >= BlockFormat.MODERN)
 			{
 				schematic.AddTag("Palette", palette);
 				if (palette.Count() > byte.MaxValue)
@@ -454,7 +474,7 @@ namespace import
 
 			int sx = Util.ModNeg(x, 16);
 			int sy = Util.ModNeg(y, 16);
-			int sz = z % 16;
+			int sz = Util.ModNeg(z, 16);
 			return sec.IsBlockSaved(sx, sy, sz);
 		}
 
@@ -498,7 +518,7 @@ namespace import
 			if (chunk == null)
 				return null;
 
-			return chunk.sections[z / 16];
+			return chunk.sections[(z + 64) / 16];
 		}
 
 		/// <summary>Returns the preview key of the block at x, y, z in the world.</summary>
@@ -513,7 +533,7 @@ namespace import
 
 			int sx = Util.ModNeg(x, 16);
 			int sy = Util.ModNeg(y, 16);
-			int sz = z % 16;
+			int sz = Util.ModNeg(z, 16);
 
 			// Check if filtered
 			if (!sec.IsBlockSaved(sx, sy, sz))

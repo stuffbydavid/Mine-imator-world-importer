@@ -31,3 +31,15 @@ D:\Dropbox\Projects\Game Maker\Mine-imator\Import\import\obj\x86\Debug\import.Pr
 D:\Dropbox\Projects\Game Maker\Mine-imator\Import\import\obj\x86\Debug\import.csproj.GenerateResource.Cache
 D:\Dropbox\Projects\Game Maker\Mine-imator\Import\import\obj\x86\Debug\import.exe
 D:\Dropbox\Projects\Game Maker\Mine-imator\Import\import\obj\x86\Debug\import.pdb
+C:\Dev\Mine-imator-world-importer\import\bin\Debug\import.exe.config
+C:\Dev\Mine-imator-world-importer\import\bin\Debug\import.exe
+C:\Dev\Mine-imator-world-importer\import\bin\Debug\import.pdb
+C:\Dev\Mine-imator-world-importer\import\obj\x86\Debug\import.frmFilters.resources
+C:\Dev\Mine-imator-world-importer\import\obj\x86\Debug\import.frmImport.resources
+C:\Dev\Mine-imator-world-importer\import\obj\x86\Debug\import.frmLoadingRegion.resources
+C:\Dev\Mine-imator-world-importer\import\obj\x86\Debug\import.Properties.Resources.resources
+C:\Dev\Mine-imator-world-importer\import\obj\x86\Debug\import.csproj.GenerateResource.Cache
+C:\Dev\Mine-imator-world-importer\import\obj\x86\Debug\import.exe
+C:\Dev\Mine-imator-world-importer\import\obj\x86\Debug\import.pdb
+C:\Dev\Mine-imator-world-importer\import\obj\x86\Debug\import.csproj.CoreCompileInputs.cache
+C:\Dev\Mine-imator-world-importer\import\obj\x86\Debug\import.csproj.AssemblyReference.cache
