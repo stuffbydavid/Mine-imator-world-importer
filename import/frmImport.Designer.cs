@@ -36,17 +36,16 @@
             this.lblTopDownView = new System.Windows.Forms.Label();
             this.panXY = new System.Windows.Forms.Panel();
             this.pboxWorldXY = new System.Windows.Forms.PictureBox();
+            this.lblDimension = new System.Windows.Forms.Label();
             this.btnBrowse = new System.Windows.Forms.Button();
             this.lblFilterInfo = new System.Windows.Forms.Label();
             this.lblCrossSectionView = new System.Windows.Forms.Label();
             this.btnFilters = new System.Windows.Forms.Button();
             this.btnCancel = new System.Windows.Forms.Button();
             this.lblSelSize = new System.Windows.Forms.Label();
-            this.rbtEnd = new System.Windows.Forms.RadioButton();
-            this.rbtNether = new System.Windows.Forms.RadioButton();
-            this.rbtOver = new System.Windows.Forms.RadioButton();
             this.panYZ = new System.Windows.Forms.Panel();
             this.pboxWorldXZ = new System.Windows.Forms.PictureBox();
+            this.cbxDimensions = new System.Windows.Forms.ComboBox();
             this.lblInfo = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).BeginInit();
             this.splitContainer1.Panel1.SuspendLayout();
@@ -65,7 +64,7 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.lblWorld.AutoSize = true;
             this.lblWorld.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblWorld.Location = new System.Drawing.Point(4, 6);
+            this.lblWorld.Location = new System.Drawing.Point(1, 7);
             this.lblWorld.Name = "lblWorld";
             this.lblWorld.Size = new System.Drawing.Size(33, 13);
             this.lblWorld.TabIndex = 1;
@@ -79,9 +78,9 @@
             this.cbxSaves.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
             this.cbxSaves.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.cbxSaves.FormattingEnabled = true;
-            this.cbxSaves.Location = new System.Drawing.Point(48, 3);
+            this.cbxSaves.Location = new System.Drawing.Point(61, 3);
             this.cbxSaves.Name = "cbxSaves";
-            this.cbxSaves.Size = new System.Drawing.Size(254, 21);
+            this.cbxSaves.Size = new System.Drawing.Size(241, 21);
             this.cbxSaves.TabIndex = 2;
             this.cbxSaves.SelectedIndexChanged += new System.EventHandler(this.cbxSaves_SelectedIndexChanged);
             // 
@@ -113,19 +112,18 @@
             // 
             // splitContainer1.Panel2
             // 
+            this.splitContainer1.Panel2.Controls.Add(this.lblDimension);
             this.splitContainer1.Panel2.Controls.Add(this.btnBrowse);
             this.splitContainer1.Panel2.Controls.Add(this.lblFilterInfo);
             this.splitContainer1.Panel2.Controls.Add(this.lblCrossSectionView);
             this.splitContainer1.Panel2.Controls.Add(this.btnFilters);
             this.splitContainer1.Panel2.Controls.Add(this.btnCancel);
             this.splitContainer1.Panel2.Controls.Add(this.lblSelSize);
-            this.splitContainer1.Panel2.Controls.Add(this.rbtEnd);
-            this.splitContainer1.Panel2.Controls.Add(this.rbtNether);
-            this.splitContainer1.Panel2.Controls.Add(this.rbtOver);
             this.splitContainer1.Panel2.Controls.Add(this.btnDone);
             this.splitContainer1.Panel2.Controls.Add(this.lblWorld);
             this.splitContainer1.Panel2.Controls.Add(this.panYZ);
             this.splitContainer1.Panel2.Controls.Add(this.cbxSaves);
+            this.splitContainer1.Panel2.Controls.Add(this.cbxDimensions);
             this.splitContainer1.Size = new System.Drawing.Size(1092, 660);
             this.splitContainer1.SplitterDistance = 692;
             this.splitContainer1.TabIndex = 6;
@@ -169,6 +167,19 @@
             this.pboxWorldXY.MouseUp += new System.Windows.Forms.MouseEventHandler(this.MoveXYEnd);
             this.pboxWorldXY.MouseWheel += new System.Windows.Forms.MouseEventHandler(this.ZoomXY);
             // 
+            // lblDimension
+            // 
+            this.lblDimension.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.lblDimension.AutoSize = true;
+            this.lblDimension.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.lblDimension.Location = new System.Drawing.Point(1, 34);
+            this.lblDimension.Name = "lblDimension";
+            this.lblDimension.Size = new System.Drawing.Size(54, 13);
+            this.lblDimension.TabIndex = 14;
+            this.lblDimension.Text = "dimension";
+            // 
             // btnBrowse
             // 
             this.btnBrowse.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Right)));
@@ -194,7 +205,7 @@
             // lblCrossSectionView
             // 
             this.lblCrossSectionView.AutoSize = true;
-            this.lblCrossSectionView.Location = new System.Drawing.Point(-1, 50);
+            this.lblCrossSectionView.Location = new System.Drawing.Point(1, 60);
             this.lblCrossSectionView.Name = "lblCrossSectionView";
             this.lblCrossSectionView.Size = new System.Drawing.Size(88, 13);
             this.lblCrossSectionView.TabIndex = 11;
@@ -234,44 +245,6 @@
             this.lblSelSize.TabIndex = 8;
             this.lblSelSize.Text = "noworld";
             // 
-            // rbtEnd
-            // 
-            this.rbtEnd.AutoSize = true;
-            this.rbtEnd.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.rbtEnd.Location = new System.Drawing.Point(148, 30);
-            this.rbtEnd.Name = "rbtEnd";
-            this.rbtEnd.Size = new System.Drawing.Size(43, 17);
-            this.rbtEnd.TabIndex = 6;
-            this.rbtEnd.Text = "end";
-            this.rbtEnd.UseVisualStyleBackColor = true;
-            this.rbtEnd.CheckedChanged += new System.EventHandler(this.rbtEnd_CheckedChanged);
-            // 
-            // rbtNether
-            // 
-            this.rbtNether.AutoSize = true;
-            this.rbtNether.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.rbtNether.Location = new System.Drawing.Point(85, 30);
-            this.rbtNether.Name = "rbtNether";
-            this.rbtNether.Size = new System.Drawing.Size(57, 17);
-            this.rbtNether.TabIndex = 6;
-            this.rbtNether.Text = "nether";
-            this.rbtNether.UseVisualStyleBackColor = true;
-            this.rbtNether.CheckedChanged += new System.EventHandler(this.rbtNether_CheckedChanged);
-            // 
-            // rbtOver
-            // 
-            this.rbtOver.AutoSize = true;
-            this.rbtOver.Checked = true;
-            this.rbtOver.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.rbtOver.Location = new System.Drawing.Point(6, 30);
-            this.rbtOver.Name = "rbtOver";
-            this.rbtOver.Size = new System.Drawing.Size(73, 17);
-            this.rbtOver.TabIndex = 6;
-            this.rbtOver.TabStop = true;
-            this.rbtOver.Text = "overworld";
-            this.rbtOver.UseVisualStyleBackColor = true;
-            this.rbtOver.CheckedChanged += new System.EventHandler(this.rbtOver_CheckedChanged);
-            // 
             // panYZ
             // 
             this.panYZ.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
@@ -280,9 +253,9 @@
             this.panYZ.BackgroundImage = global::import.Properties.Resources.transparentgrid1;
             this.panYZ.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
             this.panYZ.Controls.Add(this.pboxWorldXZ);
-            this.panYZ.Location = new System.Drawing.Point(0, 65);
+            this.panYZ.Location = new System.Drawing.Point(0, 76);
             this.panYZ.Name = "panYZ";
-            this.panYZ.Size = new System.Drawing.Size(391, 521);
+            this.panYZ.Size = new System.Drawing.Size(391, 510);
             this.panYZ.TabIndex = 5;
             // 
             // pboxWorldXZ
@@ -291,9 +264,9 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.pboxWorldXZ.BackColor = System.Drawing.Color.Transparent;
-            this.pboxWorldXZ.Location = new System.Drawing.Point(0, 0);
+            this.pboxWorldXZ.Location = new System.Drawing.Point(0, -2);
             this.pboxWorldXZ.Name = "pboxWorldXZ";
-            this.pboxWorldXZ.Size = new System.Drawing.Size(387, 517);
+            this.pboxWorldXZ.Size = new System.Drawing.Size(387, 508);
             this.pboxWorldXZ.TabIndex = 0;
             this.pboxWorldXZ.TabStop = false;
             this.pboxWorldXZ.SizeChanged += new System.EventHandler(this.ResizeXZ);
@@ -301,6 +274,20 @@
             this.pboxWorldXZ.MouseMove += new System.Windows.Forms.MouseEventHandler(this.OverXZ);
             this.pboxWorldXZ.MouseUp += new System.Windows.Forms.MouseEventHandler(this.MoveXZEnd);
             this.pboxWorldXZ.MouseWheel += new System.Windows.Forms.MouseEventHandler(this.ZoomXZ);
+            // 
+            // cbxDimensions
+            // 
+            this.cbxDimensions.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left) 
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this.cbxDimensions.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this.cbxDimensions.Font = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.cbxDimensions.FormattingEnabled = true;
+            this.cbxDimensions.Location = new System.Drawing.Point(61, 30);
+            this.cbxDimensions.Name = "cbxDimensions";
+            this.cbxDimensions.Size = new System.Drawing.Size(241, 21);
+            this.cbxDimensions.TabIndex = 15;
+            this.cbxDimensions.SelectedIndexChanged += new System.EventHandler(this.cbxDimensions_SelectedIndexChanged);
             // 
             // lblInfo
             // 
@@ -348,9 +335,6 @@
 		private System.Windows.Forms.Button btnDone;
 		private System.Windows.Forms.Panel panYZ;
 		private System.Windows.Forms.SplitContainer splitContainer1;
-		private System.Windows.Forms.RadioButton rbtEnd;
-		private System.Windows.Forms.RadioButton rbtNether;
-		private System.Windows.Forms.RadioButton rbtOver;
 		private System.Windows.Forms.PictureBox pboxWorldXY;
 		private System.Windows.Forms.PictureBox pboxWorldXZ;
 		private System.Windows.Forms.Label lblInfo;
@@ -361,5 +345,7 @@
 		private System.Windows.Forms.Label lblCrossSectionView;
 		private System.Windows.Forms.Label lblFilterInfo;
 		private System.Windows.Forms.Button btnBrowse;
+        private System.Windows.Forms.Label lblDimension;
+        private System.Windows.Forms.ComboBox cbxDimensions;
     }
 }

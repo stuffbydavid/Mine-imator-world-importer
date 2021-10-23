@@ -88,6 +88,36 @@ namespace import
 			}
 		}
 
+		/// <summary>A choice in the dimension combobox.</summary>
+		public class DimOption
+		{
+			public string name, displayName, datapackName;
+			public bool custom;
+			public int dimID;
+			public DimOption(string name, string displayName, bool custom, int dimID, string datapackName)
+			{
+				this.name = name;
+				this.displayName = displayName;
+				this.custom = custom;
+				this.dimID = dimID;
+				this.datapackName = datapackName;
+			}
+
+			public override string ToString()
+			{
+				return displayName;
+			}
+
+			public void copy(DimOption dim)
+            {
+				this.name = dim.name;
+				this.displayName = dim.displayName;
+				this.custom = dim.custom;
+				this.dimID = dim.dimID;
+				this.datapackName = dim.datapackName;
+			}
+		}
+
 		// Folders
 		public static string mcSaveFolder = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\.minecraft\saves";
 #if DEBUG
@@ -121,6 +151,7 @@ namespace import
 		string savefile = "";
 		World world = new World();
 		SaveRegion selectRegion = new SaveRegion();
+		DimOption dimensionSelected = new DimOption("", "", false, 0, "");
 
 		// 3D selector
 		Point moveStartMPos, moveStartPos, XYImageMidPos, XZImageMidPos;
@@ -201,18 +232,14 @@ namespace import
 			lblTopDownView.Text = GetText("topdownview");
 			lblCrossSectionView.Text = GetText("crosssectionview");
 			lblWorld.Text = GetText("world") + ":";
+			lblDimension.Text = GetText("dimension") + ":";
 			btnBrowse.Text = GetText("browse");
-			rbtOver.Text = GetText("overworld");
-			rbtNether.Text = GetText("nether");
-			rbtEnd.Text = GetText("end");
 			btnDone.Text = GetText("done");
 			btnFilters.Text = GetText("filters");
 			btnCancel.Text = GetText("cancel");
 			lblFilterInfo.Text = GetText("filtersalert");
 
 			// Set labels
-			rbtNether.Location = new Point(rbtOver.Location.X + rbtOver.Width + 5, rbtOver.Location.Y);
-			rbtEnd.Location = new Point(rbtNether.Location.X + rbtNether.Width + 5, rbtOver.Location.Y);
 			UpdateSizeLabel();
 			UpdateFilterBlocks();
 
@@ -220,7 +247,10 @@ namespace import
 			if (Directory.Exists(mcSaveFolder))
 				foreach (DirectoryInfo d in new DirectoryInfo(mcSaveFolder).GetDirectories())
 					if (File.Exists(d.FullName + @"\level.dat"))
-						cbxSaves.Items.Add(new WorldOption(d.FullName + @"\level.dat", d.Name));
+						cbxSaves.Items.Add(new WorldOption(d.FullName, d.Name));
+
+			LoadDimensions("");
+			cbxDimensions.SelectedIndex = 0;
 		}
 
 		/// <summary>Loads the chosen translation file from the settings (if available).</summary>
@@ -642,18 +672,38 @@ namespace import
 			return filterBlocksInvert;
 		}
 
-		/// <summary>Loads the world from the combobox and resets the view.</summary>
-		private void LoadWorld(string filename)
-		{
-			Dimension dim;
-			if (rbtNether.Checked)
-				dim = Dimension.NETHER;
-			else if (rbtEnd.Checked)
-				dim = Dimension.END;
-			else
-				dim = Dimension.OVERWORLD;
+		/// <summary>Loads dimensions from the world filename.</summary>
+		private void LoadDimensions(string filename)
+        {
+			cbxDimensions.Items.Clear();
 
-			if (world.Load(filename, dim))
+			// Get dimensions
+			cbxDimensions.Items.Add(new DimOption("overworld", GetText("overworld"), false, 0, ""));
+			cbxDimensions.Items.Add(new DimOption("nether", GetText("nether"), false, -1, ""));
+			cbxDimensions.Items.Add(new DimOption("end", GetText("end"), false, 1, ""));
+
+			// Search for dimensions in world save
+			if (Directory.Exists(filename + @"\dimensions")) // Open dimensions folder
+				foreach (DirectoryInfo sd in new DirectoryInfo(filename + @"\dimensions").GetDirectories())
+					foreach (DirectoryInfo datapackDim in new DirectoryInfo(sd.FullName).GetDirectories()) // Datapack folders
+						cbxDimensions.Items.Add(new DimOption(datapackDim.Name, datapackDim.Name + " (" + sd.Name + ")", true, 0, sd.Name));
+		}
+
+		/// <summary>Loads the world from the combobox and resets the view.</summary>
+		private void LoadWorld(string filename, bool refreshDimensions)
+		{
+			if (refreshDimensions)
+			{
+				int prevDim = cbxDimensions.SelectedIndex;
+				LoadDimensions(filename);
+
+				if (prevDim < cbxDimensions.Items.Count)
+					cbxDimensions.SelectedIndex = prevDim; // Keep dimension index if we can
+				else
+					cbxDimensions.SelectedIndex = 0; // Set to overworld
+			}
+
+			if (world.Load(filename + @"\level.dat", dimensionSelected))
 			{
 				XYImageMidPos = new Point((int)world.playerPos.X, (int)world.playerPos.Y);
 				XYImageZoom = 8;
@@ -1227,7 +1277,19 @@ namespace import
 			moveStartMPos = e.Location;
 		}
 
-		private void MoveXYEnd(object sender, MouseEventArgs e)
+        private void cbxDimensions_SelectedIndexChanged(object sender, EventArgs e)
+        {
+			if (cbxDimensions.SelectedIndex == -1)
+				return;
+
+			if (world.filename == "")
+				return;
+
+			dimensionSelected.copy(((DimOption)cbxDimensions.Items[cbxDimensions.SelectedIndex]));
+			LoadWorld(Path.GetDirectoryName(world.filename), false);
+		}
+
+        private void MoveXYEnd(object sender, MouseEventArgs e)
 		{
 			if (world.filename == "")
 				return;
@@ -1263,7 +1325,7 @@ namespace import
 			DialogResult res = open.ShowDialog();
 
 			if (res == DialogResult.OK && File.Exists(open.FileName))
-				LoadWorld(open.FileName);
+				LoadWorld(open.FileName, true);
 		}
 
 		private void ZoomXY(object sender, MouseEventArgs e)
@@ -1503,30 +1565,12 @@ namespace import
 			}
 		}
 
-		private void rbtOver_CheckedChanged(object sender, EventArgs e)
-		{
-			if (rbtOver.Checked)
-				LoadWorld(world.filename);
-		}
-
-		private void rbtNether_CheckedChanged(object sender, EventArgs e)
-		{
-			if (rbtNether.Checked)
-				LoadWorld(world.filename);
-		}
-
-		private void rbtEnd_CheckedChanged(object sender, EventArgs e)
-		{
-			if (rbtEnd.Checked)
-				LoadWorld(world.filename);
-		}
-
 		private void cbxSaves_SelectedIndexChanged(object sender, EventArgs e)
 		{
 			if (cbxSaves.SelectedIndex == -1)
 				return;
 
-			LoadWorld(((WorldOption)cbxSaves.Items[cbxSaves.SelectedIndex]).filename);
+			LoadWorld(((WorldOption)cbxSaves.Items[cbxSaves.SelectedIndex]).filename, true);
 		}
 
 		private void btnAdvanced_Click(object sender, EventArgs e)

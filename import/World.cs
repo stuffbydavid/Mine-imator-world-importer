@@ -3,17 +3,10 @@ using System.Collections.Generic;
 using System.Windows.Forms;
 using System.IO;
 using System.Linq;
+using static import.frmImport;
 
 namespace import
 {
-	/// <summary>A Minecraft dimension.</summary>
-	public enum Dimension
-	{
-		OVERWORLD = 0,
-		NETHER = -1,
-		END = 1
-	}
-
     /// <summary>Minecraft block format.</summary>
     public enum BlockFormat
     {
@@ -51,7 +44,7 @@ namespace import
 		/// <summary>Loads the regions of the world into memory, returns whether successful.</summary>
 		/// <param name="filename">The level.dat file of the world to load.</param>
 		/// <param name="dim">Dimension to load.</param>
-		public bool Load(string filename, Dimension dim)
+		public bool Load(string filename, DimOption dim)
 		{
 			if (!File.Exists(filename))
 				return false;
@@ -77,10 +70,16 @@ namespace import
 
 			// Look if dimension exists
 			string regionFolder = new FileInfo(filename).DirectoryName;
-			if (dim == Dimension.OVERWORLD)
-				regionFolder += @"\region";
-			else
-				regionFolder += @"\DIM" + (int)dim + @"\region";
+
+			if (!dim.custom)
+            {
+				if (dim.dimID == 0) // Overworld
+					regionFolder += @"\region";
+				else
+					regionFolder += @"\DIM" + dim.dimID + @"\region";
+			}
+            else
+				regionFolder += @"\dimensions\" + dim.datapackName + "\\" + dim.name + @"\region";
 		
 			// Determine block format
 			if (versionId >= BLOCKFORMAT_CAVESCLIFFS_VERSION)
