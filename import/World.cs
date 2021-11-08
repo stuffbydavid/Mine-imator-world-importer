@@ -11,30 +11,23 @@ namespace import
     public enum BlockFormat
     {
         LEGACY = 0,
-        MODERN = 1,
-		CAVES_CLIFFS = 2
-    }
-
-    /// <summary>Minecraft chunk storage format.</summary>
-    public enum StorageFormat
-    {
-        LEGACY = 0,
-        MODERN = 1
+        AQUATIC = 1,
+		NETHER = 2,
+		CAVES_CLIFFS = 3
     }
 
     /// <summary>A Minecraft world, represented as a collection or regions containing 32x32 chunks.</summary>
     public class World
 	{
-		public const short BLOCKFORMAT_MODERN_VERSION = 1451;
+		public const short BLOCKFORMAT_AQUATIC_VERSION = 1451;
+		public const short BLOCKFORMAT_NETHER_VERSION = 2529;
 		public const short BLOCKFORMAT_CAVESCLIFFS_VERSION = 2838;
-		public const short STORAGEFORMAT_MODERN = 2529;
 
         public const int SCHEMATIC_VERSION = 1;
 		public const int SCHEMATIC_CONTENT_VERSION = 0;
 
 		public string filename = "", name = "";
 		public BlockFormat blockFormat;
-        public StorageFormat storageFormat;
         public Point3D<int> spawnPos = new Point3D<int>(0, 0, 0);
 		public Point3D<double> playerPos = new Point3D<double>(0, 0, 0);
 		List<Region> regionList = new List<Region>();
@@ -46,6 +39,8 @@ namespace import
 		/// <param name="dim">Dimension to load.</param>
 		public bool Load(string filename, DimOption dim)
 		{
+			Console.WriteLine(filename);
+
 			if (!File.Exists(filename))
 				return false;
 
@@ -84,16 +79,12 @@ namespace import
 			// Determine block format
 			if (versionId >= BLOCKFORMAT_CAVESCLIFFS_VERSION)
 				blockFormat = BlockFormat.CAVES_CLIFFS;
-			else if (versionId >= BLOCKFORMAT_MODERN_VERSION)
-				blockFormat = BlockFormat.MODERN;
+			else if (versionId >= BLOCKFORMAT_NETHER_VERSION)
+				blockFormat = BlockFormat.NETHER;
+			else if (versionId >= BLOCKFORMAT_AQUATIC_VERSION)
+				blockFormat = BlockFormat.AQUATIC;
 			else
 				blockFormat = BlockFormat.LEGACY;
-
-            // Determine storage format
-            if (versionId >= STORAGEFORMAT_MODERN)
-                storageFormat = StorageFormat.MODERN;
-            else
-                storageFormat = StorageFormat.LEGACY;
 
             // Set name
             FileInfo info = new FileInfo(filename);
@@ -127,7 +118,7 @@ namespace import
 			spawnPos.Z = nbtData.Get("SpawnY").value;
 
 			// Player position from player.dat
-			if (blockFormat >= BlockFormat.MODERN)
+			if (blockFormat >= BlockFormat.AQUATIC)
 			{
 				string playerFolder = new FileInfo(filename).DirectoryName + @"\playerdata";
 				FileInfo[] playerFiles = new DirectoryInfo(playerFolder).GetFiles("*.dat");
@@ -184,7 +175,7 @@ namespace import
 					minRegionX = rx; minRegionY = ry;
 					maxRegionX = rx; maxRegionY = ry;
 				}
-				regionList.Add(new Region(reg.FullName, blockFormat, storageFormat, rx, ry));
+				regionList.Add(new Region(reg.FullName, blockFormat, rx, ry));
 			}
 
 			// Construct array of regions for lookup
@@ -286,7 +277,10 @@ namespace import
 			byte[] blockLegacyIdArray = null;
 			byte[] blockLegacyDataArray = null;
 
-			if (blockFormat >= BlockFormat.MODERN)
+			frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
+			bool filterWater = main.IsBlockFiltered("minecraft:water");
+
+			if (blockFormat >= BlockFormat.AQUATIC)
 			{
 				// Use Sponge Schematic format
 				// https://github.com/SpongePowered/Schematic-Specification/blob/master/versions/schematic-1.md
@@ -345,7 +339,7 @@ namespace import
 								NBTCompound newComp = (NBTCompound)comp.Copy();
 								int[] posArr = { teX - tRegion.start.X, teZ - tRegion.start.Z, teY - tRegion.start.Y };
 
-								if (blockFormat >= BlockFormat.MODERN)
+								if (blockFormat >= BlockFormat.AQUATIC)
 								{
 									newComp.Remove("id");
 									newComp.Remove("x");
@@ -378,7 +372,7 @@ namespace import
 						int sy = Util.ModNeg(y, 16);
 						int sz = Util.ModNeg(z, 16);
 
-						if (blockFormat >= BlockFormat.MODERN)
+						if (blockFormat >= BlockFormat.AQUATIC)
 						{
 							// Check filter
 							if (!section.IsBlockSaved(sx, sy, sz))
@@ -390,6 +384,32 @@ namespace import
 							short sectionPalettePos = section.blockPalettePos[sx, sy, sz];
 							string sectionMcId = section.blockPaletteMcId[sectionPalettePos];
 							NBTCompound sectionPaletteProperties = section.blockPaletteProperties[sectionPalettePos];
+
+							// Remove waterlogged state if water is filtered
+							if (filterWater && main.blockNameMap[sectionMcId].waterlogged)
+							{
+								bool hasWaterlogged = false;
+
+								if (sectionPaletteProperties != null)
+								{
+									foreach (KeyValuePair<string, NBTTag> nbtPair in sectionPaletteProperties.value)
+									{
+										if (nbtPair.Key == "waterlogged" && nbtPair.Value.value == "true")
+										{
+											nbtPair.Value.value = "false";
+											hasWaterlogged = true;
+										}
+									}
+								}
+
+								if (!hasWaterlogged)
+								{
+									if (sectionPaletteProperties == null)
+										sectionPaletteProperties = new NBTCompound();
+
+									sectionPaletteProperties.Add(TagType.STRING, "waterlogged", "false");
+								}
+							}
 
 							// Construct ID:[properties] key
 							string key = sectionMcId;
@@ -431,7 +451,7 @@ namespace import
 
 			schematic.AddTag("TileEntities", tileEntities);
 
-			if (blockFormat >= BlockFormat.MODERN)
+			if (blockFormat >= BlockFormat.AQUATIC)
 			{
 				schematic.AddTag("Palette", palette);
 				if (palette.Count() > byte.MaxValue)

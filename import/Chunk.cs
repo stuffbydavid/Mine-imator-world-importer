@@ -18,20 +18,17 @@ namespace import
 			public byte[,,] blockLegacyId;
 			public byte[,,] blockLegacyData;
 			public BlockFormat blockFormat;
-			public StorageFormat storageFormat;
 
 			/// <summary>Parses the blocks of the section from the given NBT structure and stores the data.</summary>
 			/// <param name="nbtSection">The NBT data of the section.</param>
 			/// <param name="blockFormat">The format of the blocks in the section.</param>
-			/// /// <param name="storageFormat">The format of the chunk in the section.</param>
-			public void Load(NBTCompound nbtSection, BlockFormat blockFormat, StorageFormat storageFormat)
+			public void Load(NBTCompound nbtSection, BlockFormat blockFormat)
 			{
 				this.blockFormat = blockFormat;
-				this.storageFormat = storageFormat;
 				frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
 
 				// 1.13+ world format
-				if (blockFormat >= BlockFormat.MODERN)
+				if (blockFormat >= BlockFormat.AQUATIC)
 				{
 					blockPalettePos = new short[16, 16, 16];
 
@@ -87,7 +84,7 @@ namespace import
 					// Parse blocks
 					int bitsPerBlock;
 
-					if (storageFormat == StorageFormat.MODERN)
+					if (blockFormat >= BlockFormat.AQUATIC)
 						bitsPerBlock = Math.Max(4, (int)Math.Ceiling(Math.Log(nbtBlockPalette.Length(), 2.0)));
 					else
 						bitsPerBlock = blockStateBits.Length / (16 * 16 * 16);
@@ -108,7 +105,7 @@ namespace import
 									if (blockStateBits[longBitPos++])
 										palettePos |= 1 << b;
 
-								if (storageFormat == StorageFormat.MODERN)
+								if (blockFormat >= BlockFormat.NETHER)
 								{
 									// Go to next 64-bit long in bit array
 									if (++blockPos == blocksPerLong)
@@ -171,14 +168,9 @@ namespace import
 
 				string mcId;
 
-				if (blockFormat >= BlockFormat.MODERN)
+				if (blockFormat >= BlockFormat.AQUATIC)
 				{
-					//if (blockFormat >= BlockFormat.CAVES_CLIFFS)
-					//	z += 64;
-
 					short palettePos = blockPalettePos[x, y, z];
-					//if (palettePos == 0) // Air
-					//	return false;
 
 					if (blockPaletteMcId == null)
 						return false;
@@ -209,15 +201,14 @@ namespace import
 		public NBTList tileEntities;
 		public bool tileEntitiesSaved;
 		public BlockFormat blockFormat;
-		public StorageFormat storageFormat;
+		public dynamic chunkVersion;
 
 		/// <summary>Initializes a new chunk at the given position and with the given amount of sections (slices with 16x16x16 blocks).</summary>
 		/// <param name="data">The uncompressed NBT Data of the chunk</param>
-		public Chunk(byte[] data, BlockFormat blockFormat, StorageFormat storageFormat)
+		public Chunk(byte[] data, BlockFormat blockFormat)
 		{
 			this.data = data;
 			this.blockFormat = blockFormat;
-			this.storageFormat = storageFormat;
 			XYImage = null;
 			XZImage = null;
 
@@ -231,23 +222,43 @@ namespace import
 		{
 			NBTReader nbt = new NBTReader();
 			NBTCompound nbtChunk = nbt.Open(data, DataFormat.ZLIB);
+
+			// 'Level' removed in 1.18
 			NBTCompound nbtLevel = (NBTCompound)nbtChunk.Get("Level");
-			NBTList nbtSections = (NBTList)nbtLevel.Get("Sections");
+			bool hasLevel = (nbtLevel != null);
+
+			// Determine block format
+			chunkVersion = nbtChunk.Get("DataVersion").value;
+
+			if (chunkVersion != null)
+			{
+				if (chunkVersion >= World.BLOCKFORMAT_CAVESCLIFFS_VERSION)
+					this.blockFormat = BlockFormat.CAVES_CLIFFS;
+				else if (chunkVersion >= World.BLOCKFORMAT_NETHER_VERSION)
+					this.blockFormat = BlockFormat.NETHER;
+				else if (chunkVersion >= World.BLOCKFORMAT_AQUATIC_VERSION)
+					this.blockFormat = BlockFormat.AQUATIC;
+				else
+					this.blockFormat = BlockFormat.LEGACY;
+			}
+			
+			NBTCompound nbtChunkData = (hasLevel ? nbtLevel : nbtChunk);
+			NBTList nbtSections = (NBTList)nbtChunkData.Get(hasLevel ? "Sections" : "sections");
 
 			// No blocks in this chunk
 			if (nbtSections == null || nbtSections.Length() == 0)
 				return false;
 
-			X = nbtLevel.Get("xPos").value;
-			Y = nbtLevel.Get("zPos").value;
-			tileEntities = nbtLevel.Get("TileEntities");
+			X = nbtChunkData.Get("xPos").value;
+			Y = nbtChunkData.Get("zPos").value;
+			tileEntities = nbtChunkData.Get(hasLevel ? "TileEntities" : "block_entities");
 
 			// Process sections
 			for (int s = 0; s < nbtSections.Length(); s++)
 			{
 				NBTCompound nbtSection = (NBTCompound)nbtSections.Get(s);
 				Section section = new Section();
-				section.Load(nbtSection, blockFormat, storageFormat);
+				section.Load(nbtSection, blockFormat);
 
 				// Add section to chunk
 				int sectionZ = nbtSection.Get("Y").value;

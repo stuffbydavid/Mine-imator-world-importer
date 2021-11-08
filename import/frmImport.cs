@@ -65,6 +65,7 @@ namespace import
 			public Dictionary<string, Vars> mcIdVarsMap = new Dictionary<string, Vars>();
 			public short[] stateIdPreviewKey;
 			public Vars defaultVars = null;
+			public bool waterlogged = false;
 
 			public Block(string name)
 			{
@@ -466,6 +467,9 @@ namespace import
 							}
 						}
 					}
+
+					if (curBlock.ContainsKey("waterlogged"))
+						block.waterlogged = curBlock["waterlogged"];
 
 					blockNameMap[block.name] = block;
 				}
@@ -1325,7 +1329,7 @@ namespace import
 			DialogResult res = open.ShowDialog();
 
 			if (res == DialogResult.OK && File.Exists(open.FileName))
-				LoadWorld(open.FileName, true);
+				LoadWorld(Path.GetDirectoryName(open.FileName), true);
 		}
 
 		private void ZoomXY(object sender, MouseEventArgs e)

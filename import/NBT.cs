@@ -159,7 +159,7 @@ namespace import
 			}
 			return "[" + str + "]";
 		}
-	}
+    }
 
 	/// <summary>Used for writing to the NBT format (Named Binary Tag) that Minecraft files use.</summary>
 	public class NBTWriter

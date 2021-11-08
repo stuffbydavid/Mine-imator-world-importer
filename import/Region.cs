@@ -12,17 +12,15 @@ namespace import
 		public string filename;
 		public Chunk[,] chunks = new Chunk[32, 32];
         public BlockFormat blockFormat;
-        public StorageFormat storageFormat;
 
         /// <summary>Initializes a region, which contains a grid of 32x32 chunks. Use Load() to load the region into memory.</summary>
         /// <param name="filename">Filename of the region, used to load it into memory.</param>
         /// <param name="x">The x value of the region.</param>
         /// <param name="y">The y value of the region.</param>
-        public Region(string filename, BlockFormat blockFormat, StorageFormat storageFormat, int x, int y)
+        public Region(string filename, BlockFormat blockFormat, int x, int y)
 		{
 			this.filename = filename;
             this.blockFormat = blockFormat;
-            this.storageFormat = storageFormat;
             X = x;
 			Y = y;
 			isLoaded = false;
@@ -67,7 +65,7 @@ namespace import
 						br.ReadByte();
 						br.ReadByte();
 
-						Chunk chunk = new Chunk(br.ReadBytes(clen - 6), blockFormat, storageFormat);
+						Chunk chunk = new Chunk(br.ReadBytes(clen - 6), blockFormat);
 						if (!chunk.Load())
 							continue;
 
