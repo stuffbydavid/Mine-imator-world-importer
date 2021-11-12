@@ -26,6 +26,11 @@ namespace import
         public const int SCHEMATIC_VERSION = 1;
 		public const int SCHEMATIC_CONTENT_VERSION = 0;
 
+		public const int WORLD_HEIGHT_MAX = 319;
+		public const int WORLD_HEIGHT_MIN = -64;
+		public const int WORLD_HEIGHT_SIZE = 384;
+		public const int WORLD_CHUNK_SECTIONS = 24;
+
 		public string filename = "", name = "";
 		public BlockFormat blockFormat;
         public Point3D<int> spawnPos = new Point3D<int>(0, 0, 0);
@@ -39,8 +44,6 @@ namespace import
 		/// <param name="dim">Dimension to load.</param>
 		public bool Load(string filename, DimOption dim)
 		{
-			Console.WriteLine(filename);
-
 			if (!File.Exists(filename))
 				return false;
 

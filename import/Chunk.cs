@@ -51,25 +51,6 @@ namespace import
 					if (nbtBlockPalette == null)
 						return;
 
-					// Generate bit array
-					string blockdataTag;
-
-					if (blockFormat >= BlockFormat.CAVES_CLIFFS)
-						blockdataTag = "data";
-					else
-						blockdataTag = "BlockStates";
-
-					if (nbtSection.Get(blockdataTag) == null)
-						return;
-
-					long[] sectionStateArray = nbtSection.Get(blockdataTag).value;
-
-					List<byte> bytes = new List<byte>();
-					bool[] blockStateBits = new bool[sectionStateArray.Length * 64];
-					foreach (long l in sectionStateArray)
-						bytes.AddRange(System.BitConverter.GetBytes(l));
-					new BitArray(bytes.ToArray()).CopyTo(blockStateBits, 0);
-
 					// Create palette
 					blockPaletteMcId = new string[nbtBlockPalette.Length()];
 					blockPaletteProperties = new NBTCompound[nbtBlockPalette.Length()];
@@ -80,6 +61,35 @@ namespace import
 						blockPaletteProperties[p] = nbtBlockCompound.Get("Properties");
 						p++;
 					}
+
+					// Generate bit array
+					string blockdataTag;
+
+					if (blockFormat >= BlockFormat.CAVES_CLIFFS)
+						blockdataTag = "data";
+					else
+						blockdataTag = "BlockStates";
+
+					// Data doesn't exist, section (likely) has one block type
+					if (nbtSection.Get(blockdataTag) == null)
+					{
+						short key = main.GetBlockPreviewKey(blockPaletteMcId[0], blockPaletteProperties[0]);
+
+						for (int z = 0; z < 16; z++)
+							for (int y = 0; y < 16; y++)
+								for (int x = 0; x < 16; x++)
+									blockPreviewKey[x, y, z] = key;
+
+						return;
+					}
+
+					long[] sectionStateArray = nbtSection.Get(blockdataTag).value;
+
+					List<byte> bytes = new List<byte>();
+					bool[] blockStateBits = new bool[sectionStateArray.Length * 64];
+					foreach (long l in sectionStateArray)
+						bytes.AddRange(System.BitConverter.GetBytes(l));
+					new BitArray(bytes.ToArray()).CopyTo(blockStateBits, 0);
 
 					// Parse blocks
 					int bitsPerBlock;
@@ -116,9 +126,7 @@ namespace import
 								}
 
 								// Store preview and palette index
-								//if (palettePos > 0)
-									blockPreviewKey[x, y, z] = main.GetBlockPreviewKey(blockPaletteMcId[palettePos], blockPaletteProperties[palettePos]);
-
+								blockPreviewKey[x, y, z] = main.GetBlockPreviewKey(blockPaletteMcId[palettePos], blockPaletteProperties[palettePos]);
 								blockPalettePos[x, y, z] = (short)palettePos;
 							}
 						}
@@ -196,8 +204,7 @@ namespace import
 		public int X, Y;
 		public FastBitmap XYImage, XZImage;
 		public Section[] sections;
-		public Section[] sectionsNegative;
-		public int sectionCount, sectionCountNegative;
+		public int sectionCount;
 		public NBTList tileEntities;
 		public bool tileEntitiesSaved;
 		public BlockFormat blockFormat;
@@ -263,15 +270,15 @@ namespace import
 				// Add section to chunk
 				int sectionZ = nbtSection.Get("Y").value;
 
-				// Negative section
+				// Correct negative byte
 				if (sectionZ > 128)
 					sectionZ = sectionZ - 256;
 
 				if (sectionZ == -5)
 					continue;
 
-				// 25 is max amount of sections as of 1.18, -5 is lowest
-				sectionZ += 4;
+				// Push sections into positive range, currently only support native height limit in worlds
+				sectionZ += 4;// 127;
 
 				sections[sectionZ] = section;
 			}

@@ -126,7 +126,7 @@ namespace import
 #else
 		public static string currentFolder = Application.StartupPath;
 #endif
-		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.17.1.midata";
+		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.18_pre1.midata";
 		public static string miLangFile = currentFolder + @"\Languages\english.milanguage";
 		public static string miBlockPreviewFile = currentFolder + @"\blockpreview.midata";
 		public static string miBlockFilterFile = currentFolder + @"\blockfilter.midata";
@@ -713,8 +713,8 @@ namespace import
 				XYImageZoom = 8;
 				selectRegion.start = new Point3D<int>((int)world.playerPos.X - 10, (int)world.playerPos.Y - 10, (int)world.playerPos.Z - 10);
 				selectRegion.end = new Point3D<int>((int)world.playerPos.X + 10, (int)world.playerPos.Y + 10, (int)world.playerPos.Z + 10);
-				selectRegion.start.Z = Math.Max(Math.Min(selectRegion.start.Z, 319), -64);
-				selectRegion.end.Z = Math.Max(Math.Min(selectRegion.end.Z, 319), -64);
+				selectRegion.start.Z = Math.Max(Math.Min(selectRegion.start.Z, World.WORLD_HEIGHT_MAX), World.WORLD_HEIGHT_MIN);
+				selectRegion.end.Z = Math.Max(Math.Min(selectRegion.end.Z, World.WORLD_HEIGHT_MAX), World.WORLD_HEIGHT_MIN);
 				UpdateSizeLabel();
 				btnDone.Enabled = true;
 				XZImageMidPos = new Point(selectRegion.start.X + (selectRegion.end.X - selectRegion.start.X) / 2, selectRegion.start.Z + (selectRegion.end.Z - selectRegion.start.Z) / 2);
@@ -780,7 +780,7 @@ namespace import
 				{
 					Color finalColor = Color.Transparent;
 
-					for (int s = 24; s >= 0; s--)
+					for (int s = World.WORLD_CHUNK_SECTIONS; s >= 0; s--)
 					{
 						Chunk.Section section = chunk.sections[s];
 						if (section == null)
@@ -801,7 +801,7 @@ namespace import
 								bool highlight = false, shade = false;
 
 								// Shade
-								if (s * 16 + z < 255)
+								if (s * 16 + z < World.WORLD_HEIGHT_MAX)
 								{
 									blockPreviewKey = world.GetBlockPreviewKey(chunk.X * 16 + x - 1, chunk.Y * 16 + y, s * 16 + z + 1);
 									if (blockPreviewKey != 0 && blockPreviewMap[blockPreviewKey].XYColor.A == 255)
@@ -818,7 +818,7 @@ namespace import
 								blockPreviewKey = world.GetBlockPreviewKey(chunk.X * 16 + x - 1, chunk.Y * 16 + y, s * 16 + z);
 								if (blockPreviewKey == 0)
 									highlight = true;
-								else if (s * 16 + z > 0)
+								else if (s * 16 + z > World.WORLD_HEIGHT_MIN)
 								{
 									blockPreviewKey = world.GetBlockPreviewKey(chunk.X * 16 + x, chunk.Y * 16 + y - 1, s * 16 + z - 1);
 									if (blockPreviewKey == 0)
@@ -855,12 +855,12 @@ namespace import
 			if (chunk.XZImage != null)
 				return chunk.XZImage.Image;
 
-			chunk.XZImage = new FastBitmap(16, 384);
+			chunk.XZImage = new FastBitmap(16, World.WORLD_HEIGHT_SIZE);
 			chunk.XZImage.LockImage();
 
 			for (int x = 0; x < 16; x++)
 			{
-				for (int s = 24; s >= 0; s--)
+				for (int s = World.WORLD_CHUNK_SECTIONS; s >= 0; s--)
 				{
 					Chunk.Section section = chunk.sections[s];
 					if (section == null)
@@ -1076,7 +1076,7 @@ namespace import
 			XZBlocksWidth = (int)(screenwid / XZImageZoom) + 1;
 			XZBlocksHeight = (int)(screenhei / XZImageZoom) + 1;
 			XZStart = new Point((int)Math.Floor(XZImageMidPos.X - (screenwid / XZImageZoom) / 2), (int)Math.Floor(XZImageMidPos.Y - (screenhei / XZImageZoom) / 2));
-			Bitmap bmp = new Bitmap(XZBlocksWidth, 384);
+			Bitmap bmp = new Bitmap(XZBlocksWidth, World.WORLD_HEIGHT_SIZE);
 
 			// Find chunks and draw them
 			using (Graphics g = Graphics.FromImage(bmp))
@@ -1090,7 +1090,7 @@ namespace import
 						if (chunk != null)
 						{
 							Bitmap img = GetChunkXZImage(chunk);
-							g.DrawImage(img, chunk.X * 16 - XZStart.X, 384 - img.Height);
+							g.DrawImage(img, chunk.X * 16 - XZStart.X, World.WORLD_HEIGHT_SIZE - img.Height);
 						}
 					}
 				}
@@ -1130,7 +1130,7 @@ namespace import
 				if (XZImageZoom == 1)
 					map = XZMapBitmap;
 				else
-					map = Util.ResizeBitmap(XZMapBitmap, (int)(XZMapBitmap.Width * XZImageZoom), (int)(384 * XZImageZoom));
+					map = Util.ResizeBitmap(XZMapBitmap, (int)(XZMapBitmap.Width * XZImageZoom), (int)(World.WORLD_HEIGHT_SIZE * XZImageZoom));
 
 				int yoff = XZImageMidPos.Y - 128;
 				g.DrawImage(map, 0, pboxWorldXZ.Height / 2 - map.Height / 2 + yoff * XZImageZoom);
@@ -1439,8 +1439,8 @@ namespace import
 					if (XZDragSelect == 8) // L
 						selectRegion.start.X = moveStartPos.X + dx;
 
-					selectRegion.start.Z = Math.Max(Math.Min(selectRegion.start.Z, 319), -64);
-					selectRegion.end.Z = Math.Max(Math.Min(selectRegion.end.Z, 319), -64);
+					selectRegion.start.Z = Math.Max(Math.Min(selectRegion.start.Z, World.WORLD_HEIGHT_MAX), World.WORLD_HEIGHT_MIN);
+					selectRegion.end.Z = Math.Max(Math.Min(selectRegion.end.Z, World.WORLD_HEIGHT_MAX), World.WORLD_HEIGHT_MIN);
 					UpdateSizeLabel();
 					Point startnewpos = new Point(selectRegion.start.X, selectRegion.start.Z);
 					Point endnewpos = new Point(selectRegion.end.X, selectRegion.end.Z);
@@ -1475,8 +1475,8 @@ namespace import
 					XZDragSelect = 5;
 					selectRegion.start = new Point3D<int>((int)(e.Location.X / XZImageZoom + XZStart.X), selectRegion.start.Y, (int)((pboxWorldXZ.Size.Height - e.Location.Y) / XZImageZoom + XZStart.Y + 1));
 					selectRegion.end = new Point3D<int>((int)(e.Location.X / XZImageZoom + XZStart.X), selectRegion.end.Y, (int)((pboxWorldXZ.Size.Height - e.Location.Y) / XZImageZoom + XZStart.Y  + 1));
-					selectRegion.start.Z = Math.Max(Math.Min(selectRegion.start.Z, 319), -64);
-					selectRegion.end.Z = Math.Max(Math.Min(selectRegion.end.Z, 319), -64);
+					selectRegion.start.Z = Math.Max(Math.Min(selectRegion.start.Z, World.WORLD_HEIGHT_MAX), World.WORLD_HEIGHT_MIN);
+					selectRegion.end.Z = Math.Max(Math.Min(selectRegion.end.Z, World.WORLD_HEIGHT_MAX), World.WORLD_HEIGHT_MIN);
 					UpdateSizeLabel();
 				}
 				else //Move view

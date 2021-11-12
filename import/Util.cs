@@ -77,8 +77,23 @@ namespace import
 
 		public static Bitmap ResizeBitmap(Bitmap sourceBMP, int width, int height)
 		{
-			Bitmap result = new Bitmap(width, height);
-			using (Graphics g = Graphics.FromImage(result))
+			Bitmap result;
+
+			try
+			{
+				result = new Bitmap(width, height);
+			}
+			catch (ArgumentException e)
+			{
+				// Force garbage collection
+				GC.Collect();
+				GC.WaitForPendingFinalizers();
+
+				// Try again
+				result = new Bitmap(width, height);
+			}
+
+            using (Graphics g = Graphics.FromImage(result))
 			{
 				g.InterpolationMode = InterpolationMode.NearestNeighbor;
 				g.DrawImage(sourceBMP, 0, 0, width, height);
