@@ -788,7 +788,7 @@ namespace import
 
 						for (int z = 15; z >= 0; z--)
 						{
-							short blockPreviewKey = section.blockPreviewKey[x, y, z];
+							short blockPreviewKey = world.GetBlockPreviewKey(chunk.X * 16 + x, chunk.Y * 16 + y, s * 16 + z); //section.blockPreviewKey[x, y, z];
 							if (blockPreviewKey == 0)
 								continue;
 
