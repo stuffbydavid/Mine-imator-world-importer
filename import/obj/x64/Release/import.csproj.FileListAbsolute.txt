@@ -1,0 +1,12 @@
+C:\Dev\Mine-imator-world-importer\import\bin\x64\Release\import.exe.config
+C:\Dev\Mine-imator-world-importer\import\bin\x64\Release\import.exe
+C:\Dev\Mine-imator-world-importer\import\bin\x64\Release\import.pdb
+C:\Dev\Mine-imator-world-importer\import\obj\x64\Release\import.csproj.AssemblyReference.cache
+C:\Dev\Mine-imator-world-importer\import\obj\x64\Release\import.frmFilters.resources
+C:\Dev\Mine-imator-world-importer\import\obj\x64\Release\import.frmImport.resources
+C:\Dev\Mine-imator-world-importer\import\obj\x64\Release\import.frmLoadingRegion.resources
+C:\Dev\Mine-imator-world-importer\import\obj\x64\Release\import.Properties.Resources.resources
+C:\Dev\Mine-imator-world-importer\import\obj\x64\Release\import.csproj.GenerateResource.cache
+C:\Dev\Mine-imator-world-importer\import\obj\x64\Release\import.csproj.CoreCompileInputs.cache
+C:\Dev\Mine-imator-world-importer\import\obj\x64\Release\import.exe
+C:\Dev\Mine-imator-world-importer\import\obj\x64\Release\import.pdb

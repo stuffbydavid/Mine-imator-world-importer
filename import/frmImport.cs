@@ -4,7 +4,9 @@ using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using System.Web.Script.Serialization;
-
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Concurrent;
 
 namespace import
 {
@@ -126,7 +128,7 @@ namespace import
 #else
 		public static string currentFolder = Application.StartupPath;
 #endif
-		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.18_pre1.midata";
+		public static string mcAssetsFile = currentFolder + @"\Minecraft\1.18.midata";
 		public static string miLangFile = currentFolder + @"\Languages\english.milanguage";
 		public static string miBlockPreviewFile = currentFolder + @"\blockpreview.midata";
 		public static string miBlockFilterFile = currentFolder + @"\blockfilter.midata";
@@ -153,6 +155,22 @@ namespace import
 		World world = new World();
 		SaveRegion selectRegion = new SaveRegion();
 		DimOption dimensionSelected = new DimOption("", "", false, 0, "");
+
+		// Region/chunk load queues
+		public ConcurrentQueue<Region> regionQueue = new ConcurrentQueue<Region>();
+		public Thread regionQueueThread = new Thread(frmImport.LoadRegionQueue);
+
+		public ConcurrentQueue<Chunk> ChunkImageXYQueue = new ConcurrentQueue<Chunk>();
+		public ConcurrentQueue<Chunk> ChunkImageXZQueue = new ConcurrentQueue<Chunk>();
+		public Thread ChunkImageThread = new Thread(frmImport.ChunkImageQueue);
+
+		public Thread UIThread = Thread.CurrentThread;
+
+		// Thread for drawing views when needed
+		public Thread DrawEventThread = new Thread(frmImport.DrawEventListener);
+		public bool updateXYView, updateXZView = false;
+		bool updateXYSel, updateXZSel = false;
+		int updateXYViewMoveX, updateXYViewMoveY = 0;
 
 		// 3D selector
 		Point moveStartMPos, moveStartPos, XYImageMidPos, XZImageMidPos;
@@ -184,6 +202,107 @@ namespace import
 				if (i > 0)
 					savefile += " ";
 				savefile += args[i];
+			}
+		}
+
+		private static void LoadRegionQueue()
+		{
+			frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
+
+			while (true)
+			{
+				if (!main.UIThread.IsAlive)
+					Thread.CurrentThread.Abort();
+
+				for (int i = 0; i < main.regionQueue.Count; i++)
+				{
+					Region r;
+					main.regionQueue.TryPeek(out r);
+
+					if (r != null)
+						r.Load();
+
+					main.regionQueue.TryDequeue(out r);
+
+					main.updateXYView = true;
+					main.updateXZView = true;
+				}
+			}
+		}
+
+		private static void ChunkImageQueue()
+		{
+			frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
+
+			while (true)
+			{
+				if (!main.UIThread.IsAlive)
+					Thread.CurrentThread.Abort();
+
+				Parallel.ForEach(main.ChunkImageXYQueue, c =>
+				{
+					if (!c.XYImageInQueue)
+						return;
+
+					if (c != null)
+					{
+						main.GetChunkXYImage(c);
+						c.XYImageInQueue = false;
+						main.ChunkImageXYQueue.TryDequeue(out c);
+						main.updateXYView = true;
+					}
+				});
+
+				Parallel.ForEach(main.ChunkImageXZQueue, c =>
+				{
+					if (!c.XZImageInQueue)
+						return;
+
+					if (c != null)
+					{
+						main.GetChunkXZImage(c);
+						c.XZImageInQueue = false;
+						main.ChunkImageXZQueue.TryDequeue(out c);
+						main.updateXZView = true;
+					}
+				});
+			}
+		}
+
+		private static void DrawEventListener()
+		{
+			frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
+
+			while (true)
+			{
+				if (!main.UIThread.IsAlive)
+					Thread.CurrentThread.Abort();
+
+				if (main.updateXYView)
+				{
+					main.updateXYView = false;
+					main.UpdateXYMap(main.updateXYViewMoveX, main.updateXYViewMoveY);
+					main.updateXYViewMoveX = 0;
+					main.updateXYViewMoveY = 0;
+				}
+
+				if (main.updateXYSel)
+				{
+					main.updateXYSel = false;
+					main.UpdateXYSel();
+				}
+
+				if (main.updateXZView)
+				{
+					main.updateXZView = false;
+					main.UpdateXZMap();
+				}
+
+				if (main.updateXZSel)
+				{
+					main.updateXZSel = false;
+					main.UpdateXZSel();	
+				}
 			}
 		}
 
@@ -239,6 +358,7 @@ namespace import
 			btnFilters.Text = GetText("filters");
 			btnCancel.Text = GetText("cancel");
 			lblFilterInfo.Text = GetText("filtersalert");
+			lblLoadingRegion.Visible = false;
 
 			// Set labels
 			UpdateSizeLabel();
@@ -252,6 +372,11 @@ namespace import
 
 			LoadDimensions("");
 			cbxDimensions.SelectedIndex = 0;
+
+			frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
+			main.regionQueueThread.Start();
+			main.ChunkImageThread.Start();
+			main.DrawEventThread.Start();
 		}
 
 		/// <summary>Loads the chosen translation file from the settings (if available).</summary>
@@ -343,6 +468,11 @@ namespace import
 						else
 							preview.XZColor = Util.HexToColor(obj["Z"]);
 					}
+					else
+						preview.XZColor = preview.XYColor;
+
+					if (!obj.ContainsKey("Y"))
+						preview.XYColor = preview.XZColor;
 
 					blockPreviewFileKeyMap[file] = blockPreviewMap.Count;
 					blockPreviewMap[(short)blockPreviewMap.Count] = preview;
@@ -719,8 +849,8 @@ namespace import
 				btnDone.Enabled = true;
 				XZImageMidPos = new Point(selectRegion.start.X + (selectRegion.end.X - selectRegion.start.X) / 2, selectRegion.start.Z + (selectRegion.end.Z - selectRegion.start.Z) / 2);
 
-				UpdateXYMap(0, 0);
-				UpdateXZMap();
+				updateXYView = true;
+				updateXZView = true;
 			}
 			else
 			{
@@ -768,9 +898,74 @@ namespace import
 		/// <param name="chunk">The current chunk.</param>
 		private Bitmap GetChunkXYImage(Chunk chunk)
 		{
+			// Add to queue
+			if ((chunk.XYImage == null && !chunk.XYImageInQueue) || (chunk.XYImage != null && chunk.XYImageInQueue))
+			{
+				if (chunk.XYImageInQueue == false)
+				{
+					frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
+
+					main.ChunkImageXYQueue.Enqueue(chunk);
+					chunk.XYImageInQueue = true;
+				}
+
+				#region Check regions around chunk in case regions aren't loaded yet
+				Region myRegion, edgeRegion;
+				bool stopCheck = false;
+				myRegion = world.GetRegion(chunk.X * 16, chunk.Y * 16, false);
+
+				// Down
+				edgeRegion = world.GetRegion(chunk.X * 16 - 1, chunk.Y * 16, false);
+				if (edgeRegion != null && !edgeRegion.isLoaded && (myRegion != edgeRegion))
+				{
+					edgeRegion.edgeChunks.Add(chunk);
+					stopCheck = true;
+				}
+
+				// Up
+				if (!stopCheck)
+				{
+					edgeRegion = world.GetRegion(chunk.X * 16 + 1, chunk.Y * 16, false);
+					if (edgeRegion != null && !edgeRegion.isLoaded && (myRegion != edgeRegion))
+					{
+						edgeRegion.edgeChunks.Add(chunk);
+						stopCheck = true;
+					}
+				}
+
+				// Left
+				if (!stopCheck)
+				{
+					edgeRegion = world.GetRegion(chunk.X * 16, chunk.Y * 16 - 1, false);
+					if (edgeRegion != null && !edgeRegion.isLoaded && (myRegion != edgeRegion))
+					{
+						edgeRegion.edgeChunks.Add(chunk);
+						stopCheck = true;
+					}
+				}
+
+				// Right
+				if (!stopCheck)
+				{
+					edgeRegion = world.GetRegion(chunk.X * 16, chunk.Y * 16 + 1, false);
+					if (edgeRegion != null && !edgeRegion.isLoaded && (myRegion != edgeRegion))
+					{
+						edgeRegion.edgeChunks.Add(chunk);
+						stopCheck = true;
+					}
+				}
+                #endregion
+
+                return null;
+			}
+
 			if (chunk.XYImage != null)
 				return chunk.XYImage.Image;
-			
+
+			// *Only draw on chunk drawing thread, do NOT draw on main thread*
+			if (Thread.CurrentThread == UIThread || Thread.CurrentThread == regionQueueThread || Thread.CurrentThread == DrawEventThread)
+				return null;
+
 			chunk.XYImage = new FastBitmap(16, 16);
 			chunk.XYImage.LockImage();
 
@@ -780,7 +975,7 @@ namespace import
 				{
 					Color finalColor = Color.Transparent;
 
-					for (int s = World.WORLD_CHUNK_SECTIONS; s >= 0; s--)
+					for (int s = (World.WORLD_CHUNK_SECTIONS - 1); s >= 0; s--)
 					{
 						Chunk.Section section = chunk.sections[s];
 						if (section == null)
@@ -788,7 +983,7 @@ namespace import
 
 						for (int z = 15; z >= 0; z--)
 						{
-							short blockPreviewKey = world.GetBlockPreviewKey(chunk.X * 16 + x, chunk.Y * 16 + y, s * 16 + z); //section.blockPreviewKey[x, y, z];
+							short blockPreviewKey = section.blockPreviewKey[x, y, z];
 							if (blockPreviewKey == 0)
 								continue;
 
@@ -827,9 +1022,11 @@ namespace import
 
 								// Apply
 								if (highlight)
-									blockColor = Util.ColorBrighter(blockColor, 15);
+									blockColor = Util.ColorMul(blockColor, 1.1);
 								else if (shade)
-									blockColor = Util.ColorBrighter(blockColor, -15);
+									blockColor = Util.ColorMul(blockColor, .65);
+								else
+									blockColor = Util.ColorMul(blockColor, .97);
 
 								// Add to final result, cancel if alpha is full
 								finalColor = Util.ColorAdd(blockColor, finalColor);
@@ -852,15 +1049,33 @@ namespace import
 		/// <param name="chunk">The current chunk.</param>
 		private Bitmap GetChunkXZImage(Chunk chunk)
 		{
+			// Add to queue
+			if ((chunk.XZImage == null && !chunk.XZImageInQueue) || (chunk.XZImage != null && chunk.XZImageInQueue))
+			{
+				if (chunk.XZImageInQueue == false)
+				{
+					frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
+
+					main.ChunkImageXZQueue.Enqueue(chunk);
+					chunk.XZImageInQueue = true;
+				}
+
+				return null;
+			}
+
 			if (chunk.XZImage != null)
 				return chunk.XZImage.Image;
+
+			// *Only draw on chunk drawing thread, do NOT draw on main thread*
+			if (Thread.CurrentThread == UIThread || Thread.CurrentThread == regionQueueThread || Thread.CurrentThread == DrawEventThread)
+				return null;
 
 			chunk.XZImage = new FastBitmap(16, World.WORLD_HEIGHT_SIZE);
 			chunk.XZImage.LockImage();
 
 			for (int x = 0; x < 16; x++)
 			{
-				for (int s = World.WORLD_CHUNK_SECTIONS; s >= 0; s--)
+				for (int s = (World.WORLD_CHUNK_SECTIONS - 1); s >= 0; s--)
 				{
 					Chunk.Section section = chunk.sections[s];
 					if (section == null)
@@ -936,8 +1151,8 @@ namespace import
 			GC.WaitForPendingFinalizers();
 
 			// Update
-			UpdateXYMap(0, 0);
-			UpdateXZMap();
+			updateXYView = true;
+			updateXZView = true;
 		}
 
 		/// <summary>Updates the bitmap of the XY map.</summary>
@@ -959,66 +1174,17 @@ namespace import
 			// Find chunks and draw them
 			using (Graphics g = Graphics.FromImage(bmp))
 			{
-				if (!move)
+				for (int dx = 0; dx < XYBlocksWidth + 16; dx += 16)
 				{
-					for (int dx = 0; dx < XYBlocksWidth + 16; dx += 16)
+					for (int dy = 0; dy < XYBlocksHeight + 16; dy += 16)
 					{
-						for (int dy = 0; dy < XYBlocksHeight + 16; dy += 16)
+						Chunk chunk = world.GetChunk(XYStart.X + dx, XYStart.Y + dy);
+						if (chunk != null)
 						{
-							Chunk chunk = world.GetChunk(XYStart.X + dx, XYStart.Y + dy);
-							if (chunk != null)
-								g.DrawImage(GetChunkXYImage(chunk), chunk.X * 16 - XYStart.X, chunk.Y * 16 - XYStart.Y);
-						}
-					}
-				}
-				else
-				{
-					g.DrawImage(XYMapBitmap, x, y);
-					int sx, ex, sy, ey;
-					if (x < 0)
-					{
-						sx = XYBlocksWidth + x;
-						ex = XYBlocksWidth;
-					}
-					else
-					{
-						sx = 0;
-						ex = x + 16;
-					}
+							var img = GetChunkXYImage(chunk);
 
-					if (y < 0)
-					{
-						sy = XYBlocksHeight + y;
-						ey = XYBlocksHeight;
-					}
-					else
-					{
-						sy = 0;
-						ey = y + 16;
-					}
-
-					if (x != 0)
-					{
-						for (int dx = sx; dx < ex; dx += 16)
-						{
-							for (int dy = 0; dy < XYBlocksHeight + 16; dy += 16)
-							{
-								Chunk chunk = world.GetChunk(XYStart.X + dx, XYStart.Y + dy);
-								if (chunk != null)
-									g.DrawImage(GetChunkXYImage(chunk), chunk.X * 16 - XYStart.X, chunk.Y * 16 - XYStart.Y);
-							}
-						}
-					}
-					if (y != 0)
-					{
-						for (int dx = 0; dx < XYBlocksWidth + 16; dx += 16)
-						{
-							for (int dy = sy; dy < ey; dy += 16)
-							{
-								Chunk chunk = world.GetChunk(XYStart.X + dx, XYStart.Y + dy);
-								if (chunk != null)
-									g.DrawImage(GetChunkXYImage(chunk), chunk.X * 16 - XYStart.X, chunk.Y * 16 - XYStart.Y);
-							}
+							if (img != null)
+								g.DrawImage(img, chunk.X * 16 - XYStart.X, chunk.Y * 16 - XYStart.Y);
 						}
 					}
 				}
@@ -1026,7 +1192,7 @@ namespace import
 
 			XYMapBitmap.Dispose();
 			XYMapBitmap = bmp;
-			UpdateXYSel();
+			updateXYSel = true;
 		}
 
 		/// <summary>Updates the bitmap for the XY selection box.</summary>
@@ -1050,20 +1216,28 @@ namespace import
 		/// <summary>Draws the map, selection box, player and spawn location to the XY picture box.</summary>
 		private void UpdateXYPicBox()
 		{
-			if (pboxWorldXY.Image != null)
-				pboxWorldXY.Image.Dispose();
-
+			Bitmap bmp;
+			
 			if (XYImageZoom == 1)
-				pboxWorldXY.Image = new Bitmap(XYMapBitmap);
+				bmp = new Bitmap(XYMapBitmap);
 			else
-				pboxWorldXY.Image = Util.ResizeBitmap(XYMapBitmap, (int)(XYBlocksWidth * XYImageZoom), (int)(XYBlocksHeight * XYImageZoom));
+				bmp = Util.ResizeBitmap(XYMapBitmap, (int)(XYBlocksWidth * XYImageZoom), (int)(XYBlocksHeight * XYImageZoom));
 
-			using (Graphics g = Graphics.FromImage(pboxWorldXY.Image))
+			using (Graphics g = Graphics.FromImage(bmp))
 			{
 				g.DrawImage(spawnImage, (int)((world.spawnPos.X - XYStart.X) * XYImageZoom) - 8, (int)((world.spawnPos.Y - XYStart.Y) * XYImageZoom) - 8);
 				g.DrawImage(playerImage, (int)(((int)world.playerPos.X - XYStart.X) * XYImageZoom) - 8, (int)(((int)world.playerPos.Y - XYStart.Y) * XYImageZoom) - 8);
 				g.DrawImage(XYSelectBitmap, 0, 0);
 			}
+
+			frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
+			main.pboxWorldXY.Invoke((MethodInvoker)(() =>
+			{
+				if (pboxWorldXY.Image != null)
+					pboxWorldXY.Image.Dispose();
+
+				pboxWorldXY.Image = bmp;
+			}));
 		}
 
 		/// <summary>Updates the bitmap of the XZ map.</summary>
@@ -1090,15 +1264,22 @@ namespace import
 						if (chunk != null)
 						{
 							Bitmap img = GetChunkXZImage(chunk);
-							g.DrawImage(img, chunk.X * 16 - XZStart.X, World.WORLD_HEIGHT_SIZE - img.Height);
+
+							if (img != null)
+								g.DrawImage(img, chunk.X * 16 - XZStart.X, World.WORLD_HEIGHT_SIZE - img.Height);
 						}
 					}
 				}
 			}
 
-			XZMapBitmap.Dispose();
-			XZMapBitmap = bmp;
-			UpdateXZSel();
+			frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
+			main.pboxWorldXY.Invoke((MethodInvoker)(() =>
+			{
+				XZMapBitmap.Dispose();
+				XZMapBitmap = bmp;
+			}));
+			
+			updateXZSel = true;
 		}
 
 		/// <summary>Updates the bitmap for the XZ selection box.</summary>
@@ -1119,25 +1300,31 @@ namespace import
 		/// <summary>Draws the map, selection box, player and spawn location to the XZ picture box.</summary>
 		private void UpdateXZPicBox()
 		{
-			if (pboxWorldXZ.Image != null)
-				pboxWorldXZ.Image.Dispose();
+			Bitmap map = new Bitmap(pboxWorldXZ.Width, pboxWorldXZ.Height);
 
-			pboxWorldXZ.Image = new Bitmap(pboxWorldXZ.Width, pboxWorldXZ.Height);
-
-			using (Graphics g = Graphics.FromImage(pboxWorldXZ.Image))
+			using (Graphics g = Graphics.FromImage(map))
 			{
-				Bitmap map;
+				Bitmap chunkMap;
 				if (XZImageZoom == 1)
-					map = XZMapBitmap;
+					chunkMap = XZMapBitmap;
 				else
-					map = Util.ResizeBitmap(XZMapBitmap, (int)(XZMapBitmap.Width * XZImageZoom), (int)(World.WORLD_HEIGHT_SIZE * XZImageZoom));
+					chunkMap = Util.ResizeBitmap(XZMapBitmap, (int)(XZMapBitmap.Width * XZImageZoom), (int)(World.WORLD_HEIGHT_SIZE * XZImageZoom));
 
 				int yoff = XZImageMidPos.Y - 128;
-				g.DrawImage(map, 0, pboxWorldXZ.Height / 2 - map.Height / 2 + yoff * XZImageZoom);
+				g.DrawImage(chunkMap, 0, pboxWorldXZ.Height / 2 - chunkMap.Height / 2 + yoff * XZImageZoom);
 				g.DrawImage(XZSelectBitmap, 0, 0);
 				g.DrawImage(spawnImage, (int)((world.spawnPos.X - XZStart.X) * XZImageZoom) - 8, pboxWorldXZ.Height - (int)((world.spawnPos.Z - XZStart.Y) * XZImageZoom) - 8);
 				g.DrawImage(playerImage, (int)((world.playerPos.X - XZStart.X) * XZImageZoom) - 8, pboxWorldXZ.Height - (int)((world.playerPos.Z - XZStart.Y) * XZImageZoom) - 8);
 			}
+
+			frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
+			main.pboxWorldXY.Invoke((MethodInvoker)(() =>
+			{
+				if (pboxWorldXZ.Image != null)
+					pboxWorldXZ.Image.Dispose();
+
+				pboxWorldXZ.Image = map;
+			}));
 		}
 
 		// Picture box events
@@ -1185,7 +1372,12 @@ namespace import
 					Point prevpos = new Point(XYImageMidPos.X, XYImageMidPos.Y);
 					XYImageMidPos = new Point(moveStartPos.X - dx, moveStartPos.Y - dy);
 					Point newpos = new Point(XYImageMidPos.X, XYImageMidPos.Y);
-					if (prevpos != newpos) UpdateXYMap(prevpos.X - newpos.X, prevpos.Y - newpos.Y);
+					if (prevpos != newpos)
+					{
+						updateXYView = true;
+						updateXYViewMoveX = (prevpos.X - newpos.X);
+						updateXYViewMoveY = (prevpos.Y - newpos.Y);
+					}
 				}
 				else // Change rectangle
 				{
@@ -1227,11 +1419,14 @@ namespace import
 					if (XYDragSelect == 8) // L
 						selectRegion.start.X = moveStartPos.X + dx;
 
+					if (dy != 0 && (Util.IntDiv(endprevpos.Y, 16) != Util.IntDiv(selectRegion.end.Y, 16)))
+						updateXZView = true;
+
 					UpdateSizeLabel();
 					Point startnewpos = new Point(selectRegion.start.X, selectRegion.start.Y);
 					Point endnewpos = new Point(selectRegion.end.X, selectRegion.end.Y);
 					if (startprevpos != startnewpos || endprevpos != endnewpos)
-						UpdateXYSel();
+						updateXYSel = true;
 				}
 			}
 
@@ -1315,8 +1510,8 @@ namespace import
 
 			XYDragSelect = 0;
 			XZImageMidPos = new Point(selectRegion.start.X + (selectRegion.end.X - selectRegion.start.X) / 2, selectRegion.start.Z + (selectRegion.end.Z - selectRegion.start.Z) / 2);
-			UpdateXYSel();
-			UpdateXZMap();
+			updateXYSel = true;
+			updateXZView = true;
 			UpdateSizeLabel();
 		}
 
@@ -1345,12 +1540,13 @@ namespace import
 
 			if (e.Delta < 0 && XYImageZoom > 0.25)
 				XYImageZoom /= 2;
-			UpdateXYMap(0, 0);
+
+			updateXYView = true;
 		}
 
         private void ResizeXY(object sender, EventArgs e)
 		{
-			UpdateXYMap(0, 0);
+			updateXYView = true;
 		}
 
 		private void OverXZ(object sender, MouseEventArgs e)
@@ -1397,7 +1593,7 @@ namespace import
 					XZImageMidPos = new Point(moveStartPos.X - dx, (moveStartPos.Y - dy));
 					Point newpos = new Point(XZImageMidPos.X, XZImageMidPos.Y);
 					if (prevpos != newpos)
-						UpdateXZMap();
+						updateXZView = true;
 				}
 				else // Change rectangle
 				{
@@ -1445,7 +1641,7 @@ namespace import
 					Point startnewpos = new Point(selectRegion.start.X, selectRegion.start.Z);
 					Point endnewpos = new Point(selectRegion.end.X, selectRegion.end.Z);
 					if (startprevpos != startnewpos || endprevpos != endnewpos)
-						UpdateXZSel();
+						updateXZSel = true;
 				}
 			}
 
@@ -1522,8 +1718,8 @@ namespace import
 			}
 
 			XZDragSelect = 0;
-			UpdateXYSel();
-			UpdateXZSel();
+			updateXYSel = true;
+			updateXZSel = true;
 			UpdateSizeLabel();
 		}
 
@@ -1541,12 +1737,12 @@ namespace import
 			if (e.Delta < 0 && XZImageZoom > 0.25)
 				XZImageZoom /= 2;
 
-			UpdateXZMap();
+			updateXZView = true;
 		}
 
 		private void ResizeXZ(object sender, EventArgs e)
 		{
-			UpdateXZMap();
+			updateXZView = true;
 		}
 
 		// Button events

@@ -29,7 +29,7 @@ namespace import
 		public const int WORLD_HEIGHT_MAX = 319;
 		public const int WORLD_HEIGHT_MIN = -64;
 		public const int WORLD_HEIGHT_SIZE = 384;
-		public const int WORLD_CHUNK_SECTIONS = 24;
+		public const int WORLD_CHUNK_SECTIONS = 64;
 
 		public string filename = "", name = "";
 		public BlockFormat blockFormat;
@@ -503,7 +503,8 @@ namespace import
 		/// <summary>Returns the region that contains all the blocks at x, y in the world.</summary>
 		/// <param name="x">x value to check.</param>
 		/// <param name="y">y value to check.</param>
-		public Region GetRegion(int x, int y)
+		/// <param name="returnLoaded">Only return fully-loaded regions.</param>
+		public Region GetRegion(int x, int y, bool returnLoaded)
 		{
 			int cx = Util.IntDiv(x, 512);
 			int cy = Util.IntDiv(y, 512);
@@ -512,8 +513,19 @@ namespace import
 				return null;
 
 			Region reg = regions[cx - minRegionX, cy - minRegionY];
-			if (reg != null && !reg.isLoaded)
-				reg.Load();
+			if (reg != null && !reg.isLoaded && !reg.inQueue)
+			{
+				// Add to region queue
+				frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
+
+				main.regionQueue.Enqueue(reg);
+				reg.inQueue = true;
+
+				if (returnLoaded)
+					return null;
+				else
+					return reg;
+			}
 
 			return reg;
 		}
@@ -523,7 +535,7 @@ namespace import
 		/// <param name="y">y value to check.</param>
 		public Chunk GetChunk(int x, int y)
 		{
-			Region reg = GetRegion(x, y);
+			Region reg = GetRegion(x, y, true);
 			if (reg == null)
 				return null;
 
@@ -540,7 +552,7 @@ namespace import
 			if (chunk == null)
 				return null;
 
-			return chunk.sections[(z + 64) / 16];
+			return chunk.sections[z / 16];
 		}
 
 		/// <summary>Returns the preview key of the block at x, y, z in the world.</summary>

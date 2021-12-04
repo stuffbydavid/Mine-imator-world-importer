@@ -35,6 +35,7 @@
             this.splitContainer1 = new System.Windows.Forms.SplitContainer();
             this.lblTopDownView = new System.Windows.Forms.Label();
             this.panXY = new System.Windows.Forms.Panel();
+            this.lblLoadingRegion = new System.Windows.Forms.Label();
             this.pboxWorldXY = new System.Windows.Forms.PictureBox();
             this.lblDimension = new System.Windows.Forms.Label();
             this.btnBrowse = new System.Windows.Forms.Button();
@@ -144,11 +145,29 @@
             | System.Windows.Forms.AnchorStyles.Right)));
             this.panXY.BackgroundImage = global::import.Properties.Resources.transparentgrid;
             this.panXY.BorderStyle = System.Windows.Forms.BorderStyle.Fixed3D;
+            this.panXY.Controls.Add(this.lblLoadingRegion);
             this.panXY.Controls.Add(this.pboxWorldXY);
             this.panXY.Location = new System.Drawing.Point(3, 17);
             this.panXY.Name = "panXY";
             this.panXY.Size = new System.Drawing.Size(690, 640);
             this.panXY.TabIndex = 0;
+            // 
+            // lblLoadingRegion
+            // 
+            this.lblLoadingRegion.AutoSize = true;
+            this.lblLoadingRegion.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(64)))), ((int)(((byte)(64)))), ((int)(((byte)(64)))));
+            this.lblLoadingRegion.Dock = System.Windows.Forms.DockStyle.Left;
+            this.lblLoadingRegion.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Bold);
+            this.lblLoadingRegion.ForeColor = System.Drawing.SystemColors.ControlLight;
+            this.lblLoadingRegion.ImageAlign = System.Drawing.ContentAlignment.MiddleRight;
+            this.lblLoadingRegion.Location = new System.Drawing.Point(0, 0);
+            this.lblLoadingRegion.Name = "lblLoadingRegion";
+            this.lblLoadingRegion.RightToLeft = System.Windows.Forms.RightToLeft.No;
+            this.lblLoadingRegion.Size = new System.Drawing.Size(83, 13);
+            this.lblLoadingRegion.TabIndex = 8;
+            this.lblLoadingRegion.Text = "loadingregion";
+            this.lblLoadingRegion.TextAlign = System.Drawing.ContentAlignment.TopRight;
+            this.lblLoadingRegion.Visible = false;
             // 
             // pboxWorldXY
             // 
@@ -156,9 +175,9 @@
             | System.Windows.Forms.AnchorStyles.Left) 
             | System.Windows.Forms.AnchorStyles.Right)));
             this.pboxWorldXY.BackColor = System.Drawing.Color.Transparent;
-            this.pboxWorldXY.Location = new System.Drawing.Point(0, 0);
+            this.pboxWorldXY.Location = new System.Drawing.Point(0, -2);
             this.pboxWorldXY.Name = "pboxWorldXY";
-            this.pboxWorldXY.Size = new System.Drawing.Size(686, 636);
+            this.pboxWorldXY.Size = new System.Drawing.Size(686, 638);
             this.pboxWorldXY.TabIndex = 0;
             this.pboxWorldXY.TabStop = false;
             this.pboxWorldXY.SizeChanged += new System.EventHandler(this.ResizeXY);
@@ -319,6 +338,7 @@
             ((System.ComponentModel.ISupportInitialize)(this.splitContainer1)).EndInit();
             this.splitContainer1.ResumeLayout(false);
             this.panXY.ResumeLayout(false);
+            this.panXY.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pboxWorldXY)).EndInit();
             this.panYZ.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this.pboxWorldXZ)).EndInit();
@@ -347,5 +367,6 @@
 		private System.Windows.Forms.Button btnBrowse;
         private System.Windows.Forms.Label lblDimension;
         private System.Windows.Forms.ComboBox cbxDimensions;
+        public System.Windows.Forms.Label lblLoadingRegion;
     }
 }

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections;
 using System.Windows.Forms;
+using System.Threading.Tasks;
 
 namespace import
 {
@@ -209,6 +210,8 @@ namespace import
 		public bool tileEntitiesSaved;
 		public BlockFormat blockFormat;
 		public dynamic chunkVersion;
+		public bool isLoaded = false;
+		public bool XYImageInQueue, XZImageInQueue = false;
 
 		/// <summary>Initializes a new chunk at the given position and with the given amount of sections (slices with 16x16x16 blocks).</summary>
 		/// <param name="data">The uncompressed NBT Data of the chunk</param>
@@ -219,8 +222,8 @@ namespace import
 			XYImage = null;
 			XZImage = null;
 
-			sections = new Section[256];
-			for (int s = 0; s < 256; s++)
+			sections = new Section[World.WORLD_CHUNK_SECTIONS];
+			for (int s = 0; s < World.WORLD_CHUNK_SECTIONS; s++)
 				sections[s] = null;
 		}
 
@@ -261,7 +264,7 @@ namespace import
 			tileEntities = nbtChunkData.Get(hasLevel ? "TileEntities" : "block_entities");
 
 			// Process sections
-			for (int s = 0; s < nbtSections.Length(); s++)
+			Parallel.For(0, nbtSections.Length(), s =>
 			{
 				NBTCompound nbtSection = (NBTCompound)nbtSections.Get(s);
 				Section section = new Section();
@@ -274,16 +277,18 @@ namespace import
 				if (sectionZ > 128)
 					sectionZ = sectionZ - 256;
 
-				if (sectionZ == -5)
-					continue;
+				if (sectionZ != -5)
+				{
+					// Push sections into positive range, currently only support native height limit in worlds
+					sectionZ += 4;// 127;
 
-				// Push sections into positive range, currently only support native height limit in worlds
-				sectionZ += 4;// 127;
-
-				sections[sectionZ] = section;
-			}
+					sections[sectionZ] = section;
+				}
+			});
 
 			data = null;
+			isLoaded = true;
+
 			return true;
 		}
 	}

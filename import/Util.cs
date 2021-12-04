@@ -68,6 +68,16 @@ namespace import
 			);
 		}
 
+		static public Color ColorMul(Color from, double mul)
+		{
+			return Color.FromArgb(
+				from.A,
+				(int)(Math.Max(0, Math.Min(255, from.R * mul))),
+				(int)(Math.Max(0, Math.Min(255, from.G * mul))),
+				(int)(Math.Max(0, Math.Min(255, from.B * mul)))
+			);
+		}
+
 		public static Color HexToColor(string hex, int alpha = 255)
 		{
 			Color col = Color.FromArgb(Int32.Parse(hex.Replace("#", ""), NumberStyles.HexNumber));

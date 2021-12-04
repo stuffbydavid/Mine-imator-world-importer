@@ -2,16 +2,19 @@
 using System.Collections.Generic;
 using System.Windows.Forms;
 using System.IO;
+using System.Threading;
+using System.Collections.Concurrent;
 
 namespace import
 {
 	public class Region
 	{
 		public int X, Y;
-		public bool isLoaded;
+		public bool isLoaded, inQueue;
 		public string filename;
 		public Chunk[,] chunks = new Chunk[32, 32];
         public BlockFormat blockFormat;
+		public ConcurrentBag<Chunk> edgeChunks = new ConcurrentBag<Chunk>();
 
         /// <summary>Initializes a region, which contains a grid of 32x32 chunks. Use Load() to load the region into memory.</summary>
         /// <param name="filename">Filename of the region, used to load it into memory.</param>
@@ -24,6 +27,7 @@ namespace import
             X = x;
 			Y = y;
 			isLoaded = false;
+			inQueue = false;
 		}
 
 		/// <summary>Loads the chunks of the region. Returns whether successful.</summary>
@@ -32,10 +36,9 @@ namespace import
 			if (!File.Exists(filename))
 				return false;
 
-			frmLoadingRegion load = new frmLoadingRegion();
 			frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
-			load.Show();
-			load.Text = main.GetText("loadingregion");
+
+			main.lblLoadingRegion.Invoke((MethodInvoker)(() => main.lblLoadingRegion.Visible = true));
 
 			// Process region file
 			// http://minecraft.gamepedia.com/Region_file_format
@@ -57,6 +60,17 @@ namespace import
 					// http://minecraft.gamepedia.com/Chunk_format
 					for (int c = 0; c < chunkoff.Count; c++)
 					{
+						try
+						{
+							main.lblLoadingRegion.Invoke((MethodInvoker)(() =>
+								main.lblLoadingRegion.Text = main.GetText("loadingregion") + " (" + Math.Floor((float)c / (float)chunkoff.Count * 100.0) + "%)"
+							));
+						}
+						catch (Exception e)
+						{
+							Thread.CurrentThread.Abort();
+						}
+
 						fs.Seek(chunkoff[c] * 4096, 0);
 						int clen = Util.ReadInt32(br) - 1;
 						br.ReadByte(); //Always 2
@@ -73,6 +87,22 @@ namespace import
 					}
 				}
 				isLoaded = true;
+
+				foreach (Chunk c in edgeChunks)
+                {
+					if (c.XYImageInQueue)
+						continue;
+
+					main.ChunkImageXYQueue.Enqueue(c);
+					
+					if (c.XYImage != null)
+					{
+						c.XYImage.Image.Dispose();
+						c.XYImage = null;
+						c.XYImageInQueue = true;
+					}
+				}
+				
 			}
 			catch (IOException)
 			{
@@ -80,7 +110,7 @@ namespace import
 				return false;
 			}
 
-			load.Close();
+			main.lblLoadingRegion.Invoke((MethodInvoker)(() => main.lblLoadingRegion.Visible = false));
 			GC.Collect();
 			GC.WaitForPendingFinalizers();
 
