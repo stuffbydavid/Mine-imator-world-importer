@@ -9,3 +9,4 @@ C:\Dev\Mine-imator-world-importer\import\obj\x64\Debug\import.csproj.GenerateRes
 C:\Dev\Mine-imator-world-importer\import\obj\x64\Debug\import.csproj.CoreCompileInputs.cache
 C:\Dev\Mine-imator-world-importer\import\obj\x64\Debug\import.exe
 C:\Dev\Mine-imator-world-importer\import\obj\x64\Debug\import.pdb
+C:\Dev\Mine-imator-world-importer\import\obj\x64\Debug\import.csproj.AssemblyReference.cache

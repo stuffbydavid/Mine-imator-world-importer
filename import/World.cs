@@ -157,7 +157,7 @@ namespace import
 					FileStream fs = new FileStream(reg.FullName, FileMode.Open);
 					fs.Close();
 				}
-				catch (IOException)
+				catch (IOException e)
 				{
 					MessageBox.Show(main.GetText("worldopened"));
 					filename = "";
@@ -198,6 +198,9 @@ namespace import
 		public NBTCompound SaveBlocks(SaveRegion region)
 		{
 			SaveRegion tRegion = region.Copy();
+
+			tRegion.start.Z += 64;
+			tRegion.end.Z += 64;
 
 			// Reset save
 			foreach (Region reg in regionList)
@@ -366,7 +369,7 @@ namespace import
 							chunk.tileEntitiesSaved = true;
 						}
 
-						Chunk.Section section = chunk.sections[(z + 64) / 16];
+						Chunk.Section section = chunk.sections[z / 16];
 						if (section == null)
 							continue;
 
@@ -389,7 +392,7 @@ namespace import
 							NBTCompound sectionPaletteProperties = section.blockPaletteProperties[sectionPalettePos];
 
 							// Remove waterlogged state if water is filtered
-							if (filterWater && main.blockNameMap[sectionMcId].waterlogged)
+							if (filterWater)
 							{
 								bool hasWaterlogged = false;
 

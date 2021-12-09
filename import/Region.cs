@@ -38,7 +38,14 @@ namespace import
 
 			frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
 
-			main.lblLoadingRegion.Invoke((MethodInvoker)(() => main.lblLoadingRegion.Visible = true));
+			try
+			{
+				main.lblLoadingRegion.Invoke((MethodInvoker)(() => main.lblLoadingRegion.Visible = true));
+			}
+			catch (Exception e)
+			{
+				Thread.CurrentThread.Abort();
+			}
 
 			// Process region file
 			// http://minecraft.gamepedia.com/Region_file_format
@@ -46,6 +53,8 @@ namespace import
 			{
 				using (FileStream fs = new FileStream(filename, FileMode.Open))
 				{
+					main.regionFileStream = fs;
+
 					BinaryReader br = new BinaryReader(fs);
 					List<int> chunkoff = new List<int>();
 					for (int c = 0; c < 32 * 32; c++)
@@ -86,6 +95,7 @@ namespace import
 						chunks[Util.ModNeg(chunk.X, 32), Util.ModNeg(chunk.Y, 32)] = chunk;
 					}
 				}
+				main.regionFileStream = null;
 				isLoaded = true;
 
 				foreach (Chunk c in edgeChunks)
@@ -104,9 +114,13 @@ namespace import
 				}
 				
 			}
-			catch (IOException)
+			catch (Exception e)
 			{
-				MessageBox.Show(main.GetText("worldopened"));
+				// If count is 0, then regions were likely cleared by opening a new world
+				if (e.InnerException != null)
+					if (e.InnerException.GetType() == typeof(IOException))
+						MessageBox.Show(main.GetText("worldopened"));
+
 				return false;
 			}
 

@@ -68,7 +68,6 @@ namespace import
 			public short[] stateIdPreviewKey;
 			public Vars defaultVars = null;
 			public bool waterlogged = false;
-
 			public Block(string name)
 			{
 				this.name = name;
@@ -159,6 +158,7 @@ namespace import
 		// Region/chunk load queues
 		public ConcurrentQueue<Region> regionQueue = new ConcurrentQueue<Region>();
 		public Thread regionQueueThread = new Thread(frmImport.LoadRegionQueue);
+		public FileStream regionFileStream = null;
 
 		public ConcurrentQueue<Chunk> ChunkImageXYQueue = new ConcurrentQueue<Chunk>();
 		public ConcurrentQueue<Chunk> ChunkImageXZQueue = new ConcurrentQueue<Chunk>();
@@ -826,6 +826,21 @@ namespace import
 		/// <summary>Loads the world from the combobox and resets the view.</summary>
 		private void LoadWorld(string filename, bool refreshDimensions)
 		{
+			while (regionQueue.Count > 0)
+				regionQueue.TryDequeue(out Region r);
+
+			while (ChunkImageXYQueue.Count > 0)
+				ChunkImageXYQueue.TryDequeue(out Chunk c);
+
+			while (ChunkImageXZQueue.Count > 0)
+				ChunkImageXZQueue.TryDequeue(out Chunk c);
+
+			if (regionFileStream != null)
+            {
+				regionFileStream.Close();
+				regionFileStream = null;
+			}
+
 			if (refreshDimensions)
 			{
 				int prevDim = cbxDimensions.SelectedIndex;
@@ -974,8 +989,10 @@ namespace import
 				for (int y = 0; y < 16; y++)
 				{
 					Color finalColor = Color.Transparent;
+					Color transparentColor = Color.Transparent;
+					bool foundColor = false;
 
-					for (int s = (World.WORLD_CHUNK_SECTIONS - 1); s >= 0; s--)
+					for (int s = (World.WORLD_CHUNK_SECTIONS - 1); s >= 0 && !foundColor; s--)
 					{
 						Chunk.Section section = chunk.sections[s];
 						if (section == null)
@@ -993,52 +1010,77 @@ namespace import
 							Color blockColor = blockPreviewMap[blockPreviewKey].XYColor;
 							if (blockColor != Color.Transparent)
 							{
-								bool highlight = false, shade = false;
+								double light = 0.0;
 
 								// Shade
 								if (s * 16 + z < World.WORLD_HEIGHT_MAX)
 								{
 									blockPreviewKey = world.GetBlockPreviewKey(chunk.X * 16 + x - 1, chunk.Y * 16 + y, s * 16 + z + 1);
 									if (blockPreviewKey != 0 && blockPreviewMap[blockPreviewKey].XYColor.A == 255)
-										shade = true;
-									else
-									{
-										blockPreviewKey = world.GetBlockPreviewKey(chunk.X * 16 + x, chunk.Y * 16 + y - 1, s * 16 + z + 1);
-										if (blockPreviewKey != 0 && blockPreviewMap[blockPreviewKey].XYColor.A == 255)
-											shade = true;
-									}
+										light -= .2;
+
+									blockPreviewKey = world.GetBlockPreviewKey(chunk.X * 16 + x, chunk.Y * 16 + y - 1, s * 16 + z + 1);
+									if (blockPreviewKey != 0 && blockPreviewMap[blockPreviewKey].XYColor.A == 255)
+										light -= .2;
 								}
 
 								// Highlight
 								blockPreviewKey = world.GetBlockPreviewKey(chunk.X * 16 + x - 1, chunk.Y * 16 + y, s * 16 + z);
 								if (blockPreviewKey == 0)
-									highlight = true;
-								else if (s * 16 + z > World.WORLD_HEIGHT_MIN)
+									light += 0.1;
+
+								if (s * 16 + z > World.WORLD_HEIGHT_MIN)
 								{
 									blockPreviewKey = world.GetBlockPreviewKey(chunk.X * 16 + x, chunk.Y * 16 + y - 1, s * 16 + z - 1);
 									if (blockPreviewKey == 0)
-										highlight = true;
+										light += 0.1;
 								}
 
+								if (blockColor.A != 255)
+									light *= 0.25;
+
 								// Apply
-								if (highlight)
-									blockColor = Util.ColorMul(blockColor, 1.1);
-								else if (shade)
-									blockColor = Util.ColorMul(blockColor, .65);
-								else
-									blockColor = Util.ColorMul(blockColor, .97);
+								blockColor = Util.ColorMul(blockColor, 1.0 + light);
 
 								// Add to final result, cancel if alpha is full
-								finalColor = Util.ColorAdd(blockColor, finalColor);
-								if (finalColor.A == 255)
+								if (blockColor.A < 255)
+								{
+									transparentColor = Util.ColorAdd(blockColor, transparentColor);
+									finalColor = transparentColor;
+								}
+								else
+								{
+									bool underwater = false;
+
+									if (blockPreviewFileKeyMap.ContainsKey("water"))
+									{
+										underwater = (world.GetBlockPreviewKey(chunk.X * 16 + x, chunk.Y * 16 + y, s * 16 + z + 2) == blockPreviewFileKeyMap["water"]);
+
+										if (underwater)
+											transparentColor = Color.FromArgb(Math.Min((int)transparentColor.A, 128), transparentColor.R, transparentColor.G, transparentColor.B);
+									}
+
+									if (transparentColor.A == 0)
+										finalColor = blockColor;
+									else
+										finalColor = Util.ColorAdd(blockColor, transparentColor);
+
+									foundColor = true;
 									break;
+								}
 							}
 						}
 					}
 
+					if (chunk.XYImage == null)
+						return null;
+
 					chunk.XYImage.SetPixel(x, y, finalColor);
 				}
 			}
+
+			if (chunk.XYImage == null)
+				return null;
 
 			chunk.XYImage.UnlockImage();
 
@@ -1069,7 +1111,7 @@ namespace import
 			// *Only draw on chunk drawing thread, do NOT draw on main thread*
 			if (Thread.CurrentThread == UIThread || Thread.CurrentThread == regionQueueThread || Thread.CurrentThread == DrawEventThread)
 				return null;
-
+			
 			chunk.XZImage = new FastBitmap(16, World.WORLD_HEIGHT_SIZE);
 			chunk.XZImage.LockImage();
 
@@ -1084,6 +1126,8 @@ namespace import
 					for (int z = 15; z >= 0; z--)
 					{
 						Color finalColor = Color.Transparent;
+						Color transparentColor = Color.Transparent;
+						
 						for (int y = 15; y >= 0; y--)
 						{
 							short blockPreviewKey = section.blockPreviewKey[x, y, z];
@@ -1097,10 +1141,36 @@ namespace import
 							if (blockColor != Color.Transparent)
 							{
 								// Add to final result, cancel if alpha is full
-								finalColor = Util.ColorAdd(blockColor, finalColor);
-								if (finalColor.A == 255)
+								if (blockColor.A < 255)
 								{
-									finalColor = Util.ColorBrighter(finalColor, (int)(-60.0f * (1.0f - (float)y / 15.0f)));
+									transparentColor = Util.ColorAdd(blockColor, transparentColor);
+									finalColor = transparentColor;
+
+									if (y == 0 && blockPreviewFileKeyMap.ContainsKey("water"))
+									{
+										if (world.GetBlockPreviewKey(chunk.X * 16 + x, chunk.Y * 16 + y, s * 16 + z) == blockPreviewFileKeyMap["water"])
+											finalColor = Color.FromArgb(Math.Min((int)finalColor.A, 128), finalColor.R, finalColor.G, finalColor.B);
+									}
+								}
+								else
+								{
+									bool underwater = false;
+
+									if (blockPreviewFileKeyMap.ContainsKey("water"))
+									{
+										underwater = (world.GetBlockPreviewKey(chunk.X * 16 + x, chunk.Y * 16 + y + 1, s * 16 + z) == blockPreviewFileKeyMap["water"]);
+
+										if (underwater)
+											transparentColor = Color.FromArgb(Math.Min((int)transparentColor.A, 128), transparentColor.R, transparentColor.G, transparentColor.B);
+									}
+
+									blockColor = Util.ColorBrighter(blockColor, (int)(-60.0f * (1.0f - (float)y / 15.0f)));
+
+									if (transparentColor.A == 0)
+										finalColor = blockColor;
+									else
+										finalColor =  Util.ColorAdd(blockColor, transparentColor);
+
 									break;
 								}
 							}
@@ -1230,14 +1300,21 @@ namespace import
 				g.DrawImage(XYSelectBitmap, 0, 0);
 			}
 
-			frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
-			main.pboxWorldXY.Invoke((MethodInvoker)(() =>
+			try
 			{
-				if (pboxWorldXY.Image != null)
-					pboxWorldXY.Image.Dispose();
+				frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
+				main.pboxWorldXY.Invoke((MethodInvoker)(() =>
+				{
+					if (pboxWorldXY.Image != null)
+						pboxWorldXY.Image.Dispose();
 
-				pboxWorldXY.Image = bmp;
-			}));
+					pboxWorldXY.Image = bmp;
+				}));
+			}
+			catch (Exception e)
+			{
+				Thread.CurrentThread.Abort();
+			}
 		}
 
 		/// <summary>Updates the bitmap of the XZ map.</summary>
@@ -1272,13 +1349,20 @@ namespace import
 				}
 			}
 
-			frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
-			main.pboxWorldXY.Invoke((MethodInvoker)(() =>
+			try
 			{
-				XZMapBitmap.Dispose();
-				XZMapBitmap = bmp;
-			}));
-			
+				frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
+				main.pboxWorldXY.Invoke((MethodInvoker)(() =>
+				{
+					XZMapBitmap.Dispose();
+					XZMapBitmap = bmp;
+				}));
+			}
+			catch (Exception e)
+			{
+				Thread.CurrentThread.Abort();
+			}
+
 			updateXZSel = true;
 		}
 
@@ -1317,14 +1401,21 @@ namespace import
 				g.DrawImage(playerImage, (int)((world.playerPos.X - XZStart.X) * XZImageZoom) - 8, pboxWorldXZ.Height - (int)((world.playerPos.Z - XZStart.Y) * XZImageZoom) - 8);
 			}
 
-			frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
-			main.pboxWorldXY.Invoke((MethodInvoker)(() =>
+			try
 			{
-				if (pboxWorldXZ.Image != null)
-					pboxWorldXZ.Image.Dispose();
+				frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
+				main.pboxWorldXY.Invoke((MethodInvoker)(() =>
+				{
+					if (pboxWorldXZ.Image != null)
+						pboxWorldXZ.Image.Dispose();
 
-				pboxWorldXZ.Image = map;
-			}));
+					pboxWorldXZ.Image = map;
+				}));
+			}
+			catch (Exception e)
+            {
+				Thread.CurrentThread.Abort();
+			}
 		}
 
 		// Picture box events
