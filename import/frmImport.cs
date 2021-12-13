@@ -25,11 +25,13 @@ namespace import
 			public class Preview
 			{
 				public Color XYColor, XZColor;
+				public String tint;
 
-				public Preview(Color XYColor, Color XZColor)
+				public Preview(Color XYColor, Color XZColor, String tint)
 				{
 					this.XYColor = XYColor;
 					this.XZColor = XZColor;
+					this.tint = tint;
 				}
 			}
 
@@ -72,6 +74,11 @@ namespace import
 			{
 				this.name = name;
 			}
+		}
+
+		public class Biome
+		{
+			public Color grassColor, foliageColor, waterColor;
 		}
 
 		/// <summary>A choice in the world combobox.</summary>
@@ -144,6 +151,11 @@ namespace import
 		public Dictionary<string, int> blockPreviewFileKeyMap = new Dictionary<string, int>(); // JSON filename -> preview key
 		public string[,] blockLegacyMcId = new string[256, 16]; // Legacy ID + data -> Minecraft ID
 		public short[,] blockLegacyPreviewKey = new short[256, 16]; // Legacy ID + data -> Preview key
+
+		// Biomes
+		public Dictionary<string, Biome> biomeMap = new Dictionary<string, Biome>();
+		public Dictionary<int, string> biomeIdMap = new Dictionary<int, string>(); // 1.13+ biome ID -> Biome string
+		public Dictionary<int, string> legacyBiomeIdMap = new Dictionary<int, string>(); // Legacy(1.12/older) biome ID -> Biome string
 
 		// Filter
 		public bool filterBlocksActive = false, filterBlocksInvert = false;
@@ -341,7 +353,7 @@ namespace import
 			LoadLanguage(miLangFile);
 			LoadBlockPreviews(miBlockPreviewFile);
 			LoadBlocks(mcAssetsFile);
-			LoadLegacyBlocks(miLegacyFile);
+			LoadLegacy(miLegacyFile);
 
 			if (File.Exists(miBlockFilterFile))
 				LoadFilterBlocks(miBlockFilterFile);
@@ -439,7 +451,7 @@ namespace import
 		public void LoadBlockPreviews(string filename)
 		{
 			// No preview
-			blockPreviewMap[0] = new Block.Preview(Color.Transparent, Color.Transparent);
+			blockPreviewMap[0] = new Block.Preview(Color.Transparent, Color.Transparent, "");
 
 			string json = File.ReadAllText(filename);
 			try
@@ -449,7 +461,30 @@ namespace import
 				{
 					string file = key.Key;
 					JsonObject obj = (JsonObject)key.Value;
-					Block.Preview preview = new Block.Preview(Color.Transparent, Color.Transparent);
+
+					// Load biomes
+					if (file == "biomes")
+                    {
+						foreach (JsonNameValuePair b in obj)
+                        {
+							Biome biome = new Biome();
+
+							if (b.Value.ContainsKey("grass"))
+								biome.grassColor = Util.HexToColor(b.Value["grass"]);
+
+							if (b.Value.ContainsKey("foliage"))
+								biome.foliageColor = Util.HexToColor(b.Value["foliage"]);
+
+							if (b.Value.ContainsKey("water"))
+								biome.waterColor = Util.HexToColor(b.Value["water"]);
+
+							biomeMap["minecraft:" + b.Key] = biome;
+                        }
+
+						continue;
+                    }
+
+					Block.Preview preview = new Block.Preview(Color.Transparent, Color.Transparent, "");
 
 					// Top-down color
 					if (obj.ContainsKey("Y"))
@@ -473,6 +508,9 @@ namespace import
 
 					if (!obj.ContainsKey("Y"))
 						preview.XYColor = preview.XZColor;
+
+					if (obj.ContainsKey("tint"))
+						preview.tint = obj["tint"];
 
 					blockPreviewFileKeyMap[file] = blockPreviewMap.Count;
 					blockPreviewMap[(short)blockPreviewMap.Count] = preview;
@@ -612,7 +650,7 @@ namespace import
 		}
 
 		/// <summary> Load legacy block IDs/data and translate to block names and preview keys.</summary>
-		private void LoadLegacyBlocks(string filename)
+		private void LoadLegacy(string filename)
 		{
 			// Clear data
 			for (int i = 0; i < 256; i++)
@@ -669,6 +707,22 @@ namespace import
 
 						blockLegacyPreviewKey[legacyId, d] = GetBlockPreviewKey(curMcId, dataVars[d]);
 					}
+				}
+
+				JsonObject biomeIds = new JsonObject(root["biome_ids"]);
+
+				foreach (JsonNameValuePair b in biomeIds)
+				{
+					int id = Int32.Parse(b.Key);
+					biomeIdMap[id] = "minecraft:" + b.Value;
+				}
+
+				JsonObject legacyBiomeIds = new JsonObject(root["legacy_biome_ids"]);
+
+				foreach (JsonNameValuePair b in legacyBiomeIds)
+				{
+					int id = Int32.Parse(b.Key);
+					legacyBiomeIdMap[id] = "minecraft:" + b.Value;
 				}
 			}
 			catch (Exception e)
@@ -826,6 +880,11 @@ namespace import
 		/// <summary>Loads the world from the combobox and resets the view.</summary>
 		private void LoadWorld(string filename, bool refreshDimensions)
 		{
+			updateXYView = false;
+			updateXZView = false;
+			updateXYSel = false;
+			updateXZSel = false;
+
 			while (regionQueue.Count > 0)
 				regionQueue.TryDequeue(out Region r);
 
@@ -1008,6 +1067,7 @@ namespace import
 								continue;
 
 							Color blockColor = blockPreviewMap[blockPreviewKey].XYColor;
+							String blockTint = blockPreviewMap[blockPreviewKey].tint;
 							if (blockColor != Color.Transparent)
 							{
 								double light = 0.0;
@@ -1039,7 +1099,26 @@ namespace import
 								if (blockColor.A != 255)
 									light *= 0.25;
 
-								// Apply
+								// Apply biome tint
+								String blockBiome = "";
+								if (chunk.use2Dbiomes)
+									blockBiome = chunk.legacyBiomeId[x, y];
+                                else
+									blockBiome = section.biomeId[x / 4, y / 4, z / 4];
+
+								if (blockBiome == null || !biomeMap.ContainsKey(blockBiome))
+									blockBiome = "minecraft:plains";
+
+								if (blockTint != "")
+								{
+									if (blockTint == "grass")
+										blockColor = Util.ColorMul(blockColor, biomeMap[blockBiome].grassColor);
+									else if (blockTint == "foliage")
+										blockColor = Util.ColorMul(blockColor, biomeMap[blockBiome].foliageColor);
+									else if (blockTint == "water")
+										blockColor = Util.ColorMul(blockColor, biomeMap[blockBiome].waterColor);
+								}
+
 								blockColor = Util.ColorMul(blockColor, 1.0 + light);
 
 								// Add to final result, cancel if alpha is full
@@ -1138,6 +1217,28 @@ namespace import
 								continue;
 
 							Color blockColor = blockPreviewMap[blockPreviewKey].XZColor;
+							String blockTint = blockPreviewMap[blockPreviewKey].tint;
+
+							// Apply biome tint
+							String blockBiome = "";
+							if (chunk.use2Dbiomes)
+								blockBiome = chunk.legacyBiomeId[x, y];
+							else
+								blockBiome = section.biomeId[x / 4, y / 4, z / 4];
+
+							if (blockBiome == null || !biomeMap.ContainsKey(blockBiome))
+								blockBiome = "minecraft:plains";
+
+							if (blockTint != "")
+							{
+								if (blockTint == "grass")
+									blockColor = Util.ColorMul(blockColor, biomeMap[blockBiome].grassColor);
+								else if (blockTint == "foliage")
+									blockColor = Util.ColorMul(blockColor, biomeMap[blockBiome].foliageColor);
+								else if (blockTint == "water")
+									blockColor = Util.ColorMul(blockColor, biomeMap[blockBiome].waterColor);
+							}
+
 							if (blockColor != Color.Transparent)
 							{
 								// Add to final result, cancel if alpha is full

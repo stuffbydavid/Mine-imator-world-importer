@@ -19,6 +19,7 @@ namespace import
 			public byte[,,] blockLegacyId;
 			public byte[,,] blockLegacyData;
 			public BlockFormat blockFormat;
+			public String[,,] biomeId = new String[4, 4, 4];
 
 			/// <summary>Parses the blocks of the section from the given NBT structure and stores the data.</summary>
 			/// <param name="nbtSection">The NBT data of the section.</param>
@@ -27,6 +28,7 @@ namespace import
 			{
 				this.blockFormat = blockFormat;
 				frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
+				NBTCompound nbtBlockSection = nbtSection;
 
 				// 1.13+ world format
 				if (blockFormat >= BlockFormat.AQUATIC)
@@ -37,17 +39,15 @@ namespace import
 
 					if (blockFormat >= BlockFormat.CAVES_CLIFFS)
 					{
-						nbtSection = nbtSection.Get("block_states");
+						nbtBlockSection = nbtBlockSection.Get("block_states");
 
-						if (nbtSection == null)
+						if (nbtBlockSection == null)
 							return;
 
-						nbtBlockPalette = nbtSection.Get("palette");
+						nbtBlockPalette = nbtBlockSection.Get("palette");
 					}
 					else
-					{
-						nbtBlockPalette = nbtSection.Get("Palette");
-					}
+						nbtBlockPalette = nbtBlockSection.Get("Palette");
 
 					if (nbtBlockPalette == null)
 						return;
@@ -72,7 +72,7 @@ namespace import
 						blockdataTag = "BlockStates";
 
 					// Data doesn't exist, section (likely) has one block type
-					if (nbtSection.Get(blockdataTag) == null)
+					if (nbtBlockSection.Get(blockdataTag) == null)
 					{
 						short key = main.GetBlockPreviewKey(blockPaletteMcId[0], blockPaletteProperties[0]);
 
@@ -84,7 +84,7 @@ namespace import
 						return;
 					}
 
-					long[] sectionStateArray = nbtSection.Get(blockdataTag).value;
+					long[] sectionStateArray = nbtBlockSection.Get(blockdataTag).value;
 
 					List<byte> bytes = new List<byte>();
 					bool[] blockStateBits = new bool[sectionStateArray.Length * 64];
@@ -132,8 +132,58 @@ namespace import
 							}
 						}
 					}
-				}
 
+					// Load biome data
+					if (blockFormat >= BlockFormat.CAVES_CLIFFS)
+					{
+						NBTCompound nbtSectionBiomes = nbtSection.Get("biomes");
+						NBTList nbtBiomePalette = nbtSectionBiomes.Get("palette");
+
+						if (nbtSectionBiomes.Get("data") != null)
+						{
+							long[] sectionIndexArray = nbtSectionBiomes.Get("data").value;
+
+							List<byte> biomeBytes = new List<byte>();
+							bool[] biomeBits = new bool[sectionIndexArray.Length * 64];
+							foreach (long l in sectionIndexArray)
+								biomeBytes.AddRange(System.BitConverter.GetBytes(l));
+							new BitArray(biomeBytes.ToArray()).CopyTo(biomeBits, 0);
+
+							int bitsPerBiomeChunk = Math.Max(1, (int)Math.Ceiling(Math.Log(nbtBiomePalette.Length(), 2.0)));
+
+							longBitPos = 0; // Position in bit array
+
+							for (int z = 0; z < 4; z++)
+							{
+								for (int y = 0; y < 4; y++)
+								{
+									for (int x = 0; x < 4; x++)
+									{
+										// Create palette index from next set of bits in array
+										int palettePos = 0;
+										for (int b = 0; b < bitsPerBiomeChunk; b++)
+											if (biomeBits[longBitPos++])
+												palettePos |= 1 << b;
+
+										// Go to next 64-bit long in bit array
+										if (Util.ModNeg(longBitPos, 64) + bitsPerBiomeChunk > 64)
+											longBitPos = (int)Math.Ceiling(longBitPos / 64.0) * 64;
+
+										// Store preview and palette index
+										biomeId[x, y, z] = nbtBiomePalette.value[palettePos].value;
+									}
+								}
+							}
+						}
+						else
+						{
+							for (int z = 0; z < 4; z++)
+								for (int y = 0; y < 4; y++)
+									for (int x = 0; x < 4; x++)
+										biomeId[x, y, z] = nbtBiomePalette.value[0].value;
+						}
+					}
+				}
 				// Legacy IDs and data
 				else
 				{
@@ -212,6 +262,9 @@ namespace import
 		public dynamic chunkVersion;
 		public bool isLoaded = false;
 		public bool XYImageInQueue, XZImageInQueue = false;
+		public String[,,] biomeId = new String[4, 64, 4];
+		public String[,] legacyBiomeId = new String[16, 16];
+		public bool use2Dbiomes = false;
 
 		/// <summary>Initializes a new chunk at the given position and with the given amount of sections (slices with 16x16x16 blocks).</summary>
 		/// <param name="data">The uncompressed NBT Data of the chunk</param>
@@ -238,7 +291,10 @@ namespace import
 			bool hasLevel = (nbtLevel != null);
 
 			// Determine block format
-			chunkVersion = nbtChunk.Get("DataVersion").value;
+			if (nbtChunk.Get("DataVersion") != null)
+				chunkVersion = nbtChunk.Get("DataVersion").value;
+			else
+				chunkVersion = null;
 
 			if (chunkVersion != null)
 			{
@@ -251,7 +307,9 @@ namespace import
 				else
 					this.blockFormat = BlockFormat.LEGACY;
 			}
-			
+			else
+				this.blockFormat = BlockFormat.LEGACY;
+
 			NBTCompound nbtChunkData = (hasLevel ? nbtLevel : nbtChunk);
 			NBTList nbtSections = (NBTList)nbtChunkData.Get(hasLevel ? "Sections" : "sections");
 
@@ -262,6 +320,49 @@ namespace import
 			X = nbtChunkData.Get("xPos").value;
 			Y = nbtChunkData.Get("zPos").value;
 			tileEntities = nbtChunkData.Get(hasLevel ? "TileEntities" : "block_entities");
+
+			// Load biomes (if available)
+			if (blockFormat < BlockFormat.CAVES_CLIFFS)
+			{
+				frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
+
+				if (nbtLevel.Get("Biomes") != null)
+				{
+					int i = 0;
+					dynamic biomesList = nbtLevel.Get("Biomes").value;
+
+					// 3D biomes (1.15+)
+					if (biomesList.Length > 256)
+					{
+						for (int z = 0; z < 4; z++)
+						{
+							for (int y = 0; y < 64; y++)
+							{
+								for (int x = 0; x < 4; x++, i++)
+								{
+									int id = biomesList[i];
+									biomeId[x, y, z] = main.biomeIdMap[id];
+								}
+							}
+						}
+					}
+					else // 2D biomes (1.14-)
+					{
+						use2Dbiomes = true;
+
+						for (int x = 0; x < 16; x++)
+						{
+							for (int z = 0; z < 16; z++, i++)
+							{
+								int id = biomesList[i];
+
+								if (main.biomeIdMap.ContainsKey(id))
+									legacyBiomeId[z, x] = main.biomeIdMap[id];
+							}
+						}
+					}
+				}
+			}
 
 			// Process sections
 			Parallel.For(0, nbtSections.Length(), s =>
@@ -276,6 +377,13 @@ namespace import
 				// Correct negative byte
 				if (sectionZ > 128)
 					sectionZ = sectionZ - 256;
+
+				// Copy chunk biomes into section
+				if (blockFormat < BlockFormat.CAVES_CLIFFS && sectionZ > -1)
+					for (int z = 0; z < 4; z++)
+						for (int y = 0; y < 4; y++)
+							for (int x = 0; x < 4; x++)
+								section.biomeId[x, y, z] = biomeId[x, y + (4 * sectionZ), z];
 
 				if (sectionZ != -5)
 				{
