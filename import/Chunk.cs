@@ -341,7 +341,9 @@ namespace import
 								for (int x = 0; x < 4; x++, i++)
 								{
 									int id = biomesList[i];
-									biomeId[x, y, z] = main.biomeIdMap[id];
+
+									if (main.biomeIdMap.ContainsKey(id))
+										biomeId[x, y, z] = main.biomeIdMap[id];
 								}
 							}
 						}

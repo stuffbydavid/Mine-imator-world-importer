@@ -386,9 +386,13 @@ namespace import
 			cbxDimensions.SelectedIndex = 0;
 
 			frmImport main = ((frmImport)Application.OpenForms["frmImport"]);
-			main.regionQueueThread.Start();
-			main.ChunkImageThread.Start();
-			main.DrawEventThread.Start();
+
+			if (main != null)
+			{
+				main.regionQueueThread.Start();
+				main.ChunkImageThread.Start();
+				main.DrawEventThread.Start();
+			}
 		}
 
 		/// <summary>Loads the chosen translation file from the settings (if available).</summary>
@@ -1136,7 +1140,7 @@ namespace import
 										underwater = (world.GetBlockPreviewKey(chunk.X * 16 + x, chunk.Y * 16 + y, s * 16 + z + 2) == blockPreviewFileKeyMap["water"]);
 
 										if (underwater)
-											transparentColor = Color.FromArgb(Math.Min((int)transparentColor.A, 128), transparentColor.R, transparentColor.G, transparentColor.B);
+											transparentColor = Color.FromArgb(Math.Min((int)transparentColor.A, 190), transparentColor.R, transparentColor.G, transparentColor.B);
 									}
 
 									if (transparentColor.A == 0)
@@ -1262,7 +1266,7 @@ namespace import
 										underwater = (world.GetBlockPreviewKey(chunk.X * 16 + x, chunk.Y * 16 + y + 1, s * 16 + z) == blockPreviewFileKeyMap["water"]);
 
 										if (underwater)
-											transparentColor = Color.FromArgb(Math.Min((int)transparentColor.A, 128), transparentColor.R, transparentColor.G, transparentColor.B);
+											transparentColor = Color.FromArgb(Math.Min((int)transparentColor.A, 190), transparentColor.R, transparentColor.G, transparentColor.B);
 									}
 
 									blockColor = Util.ColorBrighter(blockColor, (int)(-60.0f * (1.0f - (float)y / 15.0f)));
