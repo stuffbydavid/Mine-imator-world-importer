@@ -333,7 +333,7 @@ namespace import
 								string teId = comp.Get("id").value;
 								int teX = comp.Get("x").value;
 								int teY = comp.Get("z").value;
-								int teZ = comp.Get("y").value;
+								int teZ = comp.Get("y").value + 64;
 
 								// Check bounds
 								if (teX < tRegion.start.X || teX > tRegion.end.X ||

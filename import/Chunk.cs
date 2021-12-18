@@ -235,6 +235,10 @@ namespace import
 						return false;
 
 					mcId = blockPaletteMcId[palettePos];
+
+					// Air
+					if (mcId == "minecraft:air")
+						return false;
 				}
 				else
 				{
