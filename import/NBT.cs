@@ -281,9 +281,11 @@ namespace import
 
 		private void WriteString(string val)
 		{
-			WriteShortBE((short)val.Length);
-			for (int i = 0; i < val.Length; i++)
-				outStream.WriteByte(Convert.ToByte((byte)val[i]));
+			byte[] byteArray = System.Text.Encoding.UTF8.GetBytes(val);
+			WriteShortBE((short)byteArray.Length);
+
+			for (int i = 0; i < byteArray.Length; i++)
+				outStream.WriteByte(byteArray[i]);
 		}
 
 		private void WriteShortBE(short val)
